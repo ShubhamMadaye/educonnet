@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — EduConnect</title>
+  <meta name="description" content="View and edit your EduConnect profile. See your posts, achievements, followers, and academic stats.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <style>
+    .profile-layout { max-width: 860px; margin: 0 auto; }
+
+    .profile-top-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-2xl);
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      margin-bottom: var(--sp-5);
+    }
+
+    .profile-cover {
+      height: 200px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cover-gradient { position: absolute; inset: 0; }
+
+    .profile-info-row {
+      padding: var(--sp-5) var(--sp-6);
+      padding-top: 50px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--sp-4);
+    }
+
+    .profile-avatar-wrap {
+      position: absolute;
+      bottom: -44px;
+      left: var(--sp-6);
+    }
+
+    .profile-name {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-bottom: var(--sp-1);
+    }
+
+    .profile-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-3);
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: var(--sp-2);
+    }
+
+    .profile-meta span { display: flex; align-items: center; gap: 4px; }
+
+    .profile-stats {
+      display: flex;
+      gap: var(--sp-6);
+      margin-top: var(--sp-4);
+      padding-top: var(--sp-4);
+      border-top: 1px solid var(--divider);
+    }
+
+    .profile-bio {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-top: var(--sp-2);
+      line-height: 1.6;
+    }
+
+    .badges-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sp-2);
+      margin-top: var(--sp-3);
+    }
+
+    .badges-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: var(--sp-3);
+    }
+
+    @media (max-width: 600px) {
+      .profile-info-row { flex-direction: column; align-items: flex-start; }
+      .profile-stats { gap: var(--sp-4); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="profile-layout">
+        <!-- Back button if viewing someone else -->
+        <div id="back-btn-row" class="hidden" style="margin-bottom:var(--sp-4);">
+          <button class="btn btn-secondary btn-sm" onclick="history.back()"><i class="ph ph-arrow-left"></i> Back</button>
+        </div>
+
+        <!-- Profile Card -->
+        <div class="profile-top-card animate-fade-in">
+          <div class="profile-cover" id="profile-cover">
+            <div class="cover-gradient" id="cover-gradient"></div>
+            <div class="profile-avatar-wrap" id="avatar-wrap"></div>
+          </div>
+
+          <div class="profile-info-row">
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;">
+                <h1 class="profile-name" id="profile-name">Loading…</h1>
+                <div id="verified-badge"></div>
+                <span class="badge" id="role-badge"></span>
+              </div>
+              <div class="profile-bio" id="profile-bio"></div>
+              <div class="profile-meta" id="profile-meta"></div>
+              <div class="profile-stats" id="profile-stats"></div>
+            </div>
+            <div id="profile-actions" style="flex-shrink:0;"></div>
+          </div>
+
+          <!-- Badges row -->
+          <div style="padding: 0 var(--sp-6) var(--sp-5);">
+            <div class="badges-row" id="profile-badges-row"></div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs" id="profile-tabs">
+          <button class="tab-btn active" data-tab="tab-posts" onclick="switchProfileTab('tab-posts',this)"><i class="ph ph-article"></i> Posts</button>
+          <button class="tab-btn" data-tab="tab-achievements" onclick="switchProfileTab('tab-achievements',this)"><i class="ph ph-trophy"></i> Achievements</button>
+          <button class="tab-btn" data-tab="tab-bookmarks" onclick="switchProfileTab('tab-bookmarks',this)" id="bookmarks-tab-btn"><i class="ph ph-bookmark-simple"></i> Bookmarks</button>
+          <button class="tab-btn" data-tab="tab-about" onclick="switchProfileTab('tab-about',this)"><i class="ph ph-info"></i> About</button>
+        </div>
+
+        <!-- Posts Tab -->
+        <div class="tab-content active" id="tab-posts">
+          <div id="profile-posts" style="display:flex;flex-direction:column;gap:var(--sp-4);"></div>
+        </div>
+
+        <!-- Achievements Tab -->
+        <div class="tab-content" id="tab-achievements">
+          <div class="badges-grid" id="achievements-grid"></div>
+        </div>
+
+        <!-- Bookmarks Tab -->
+        <div class="tab-content" id="tab-bookmarks">
+          <div id="bookmarks-list" style="display:flex;flex-direction:column;gap:var(--sp-4);"></div>
+        </div>
+
+        <!-- About Tab -->
+        <div class="tab-content" id="tab-about">
+          <div class="card card-body" id="about-content"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Edit Profile Modal -->
+  <div class="modal-overlay hidden" id="edit-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="ph ph-pencil"></i> Edit Profile</h3>
+        <button class="modal-close" onclick="closeModal('edit-modal')"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" id="edit-name" placeholder="Your full name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bio</label>
+          <textarea class="form-textarea" id="edit-bio" placeholder="Tell us about yourself…" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subject / Class</label>
+          <select class="form-select" id="edit-subject">
+            <option value="Mathematics">Mathematics</option>
+            <option value="Physics">Physics</option>
+            <option value="Chemistry">Chemistry</option>
+            <option value="Biology">Biology</option>
+            <option value="Literature">Literature</option>
+            <option value="History">History</option>
+            <option value="Computer Science">Computer Science</option>
+            <option value="Commerce">Commerce</option>
+            <option value="Science">General Science</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('edit-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveProfile()"><i class="ph ph-check"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentUser, profileUser, isOwnProfile;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      currentUser = requireAuth();
+      if (!currentUser) return;
+
+      const profileId = getParam('id') || currentUser.id;
+      profileUser = getUser(profileId);
+      if (!profileUser) { showToast('User not found','error'); history.back(); return; }
+
+      isOwnProfile = profileUser.id === currentUser.id;
+
+      buildSidebar('');
+      renderProfile();
+
+      if (!isOwnProfile) document.getElementById('back-btn-row').classList.remove('hidden');
+      if (!isOwnProfile) document.getElementById('bookmarks-tab-btn').style.display = 'none';
+    });
+
+    function renderProfile() {
+      // Cover
+      const cover = document.getElementById('profile-cover');
+      const gradient = document.getElementById('cover-gradient');
+      gradient.style.background = profileUser.bg || 'var(--grad-hero)';
+      gradient.style.opacity = '0.5';
+
+      // Avatar
+      const avatarWrap = document.getElementById('avatar-wrap');
+      avatarWrap.innerHTML = `<div class="avatar avatar-2xl" style="background:${profileUser.bg || 'var(--grad-primary)'};">${profileUser.avatar}</div>`;
+
+      // Name & badges
+      document.getElementById('profile-name').textContent = profileUser.name;
+      const roleBadge = document.getElementById('role-badge');
+      roleBadge.className = `badge badge-${profileUser.role === 'teacher' ? 'teacher' : 'student'}`;
+      roleBadge.textContent = profileUser.role.charAt(0).toUpperCase() + profileUser.role.slice(1);
+
+      if (profileUser.verified) {
+        document.getElementById('verified-badge').innerHTML = '<i class="ph ph-seal-check" style="color:var(--accent);font-size:1.2rem;" title="Verified"></i>';
+      }
+
+      document.getElementById('profile-bio').textContent = profileUser.bio || '';
+
+      // Meta
+      document.getElementById('profile-meta').innerHTML = `
+        <span><i class="ph ph-book-open"></i> ${profileUser.subject || 'Multi-subject'}</span>
+        <span><i class="ph ph-calendar-blank"></i> Joined ${formatDate(new Date(profileUser.joined).getTime())}</span>
+        <span><i class="ph ph-fire"></i> ${profileUser.streak}-day streak</span>
+        <span><i class="ph ph-star"></i> ${profileUser.points} points</span>`;
+
+      // Stats
+      const userPosts = getPosts().filter(p => p.authorId === profileUser.id);
+      document.getElementById('profile-stats').innerHTML = `
+        <div class="stat-item"><div class="stat-value">${userPosts.length}</div><div class="stat-label">Posts</div></div>
+        <div class="stat-item"><div class="stat-value">${profileUser.followers.length}</div><div class="stat-label">Followers</div></div>
+        <div class="stat-item"><div class="stat-value">${profileUser.following.length}</div><div class="stat-label">Following</div></div>
+        <div class="stat-item"><div class="stat-value">${profileUser.points}</div><div class="stat-label">Points</div></div>`;
+
+      // Actions
+      const actionsEl = document.getElementById('profile-actions');
+      if (isOwnProfile) {
+        actionsEl.innerHTML = `
+          <div style="display:flex;gap:var(--sp-2);">
+            <button class="btn btn-outline" onclick="openEditModal()"><i class="ph ph-pencil"></i> Edit Profile</button>
+            <button class="btn btn-secondary btn-icon" onclick="handleLogout()" title="Logout"><i class="ph ph-sign-out"></i></button>
+          </div>`;
+      } else {
+        const isFollowing = currentUser.following.includes(profileUser.id);
+        actionsEl.innerHTML = `
+          <div style="display:flex;gap:var(--sp-2);">
+            <button class="btn ${isFollowing ? 'btn-secondary':'btn-primary'}" id="follow-profile-btn" onclick="toggleFollowProfile()">
+              <i class="ph ${isFollowing ? 'ph-user-minus':'ph-user-plus'}"></i> ${isFollowing ? 'Following':'Follow'}
+            </button>
+            <a href="messages.html?to=${profileUser.id}" class="btn btn-outline"><i class="ph ph-chat-circle"></i> Message</a>
+          </div>`;
+      }
+
+      // Earned badges
+      const badgesRow = document.getElementById('profile-badges-row');
+      badgesRow.innerHTML = (profileUser.badges || []).map(bid => {
+        const a = ACHIEVEMENTS_LIST.find(ac => ac.id === bid);
+        if (!a) return '';
+        return `<span title="${a.desc}" style="font-size:1.2rem;cursor:default;">${a.icon}</span>`;
+      }).join('');
+
+      // Posts tab
+      renderProfilePosts(userPosts);
+
+      // Achievements
+      renderAchievements();
+
+      // Bookmarks (own profile only)
+      if (isOwnProfile) renderBookmarks();
+
+      // About
+      renderAbout();
+    }
+
+    function renderProfilePosts(posts) {
+      const el = document.getElementById('profile-posts');
+      if (!posts.length) { el.innerHTML = `<div class="empty-state"><i class="ph ph-article"></i><h4>No posts yet</h4><p>${isOwnProfile ? 'Share your first educational post!' : 'This user hasn\'t posted yet.'}</p></div>`; return; }
+      el.innerHTML = posts.map(p => buildPostCard(p, currentUser)).join('');
+    }
+
+    function renderAchievements() {
+      const el = document.getElementById('achievements-grid');
+      const earned = profileUser.badges || [];
+      el.innerHTML = ACHIEVEMENTS_LIST.map(a => `
+        <div class="achievement-badge ${earned.includes(a.id) ? '' : 'locked'}">
+          <div class="achievement-icon">${a.icon}</div>
+          <div class="achievement-name">${a.name}</div>
+          <div class="achievement-desc">${a.desc}</div>
+          ${earned.includes(a.id) ? `<span class="badge badge-success" style="font-size:0.65rem;">+${a.points} pts</span>` : '<span style="font-size:0.68rem;color:var(--text-muted);">🔒 Locked</span>'}
+        </div>`).join('');
+    }
+
+    function renderBookmarks() {
+      const allPosts = getPosts();
+      const bm = allPosts.filter(p => p.bookmarks.includes(currentUser.id));
+      const el = document.getElementById('bookmarks-list');
+      if (!bm.length) { el.innerHTML = `<div class="empty-state"><i class="ph ph-bookmark-simple"></i><h4>No bookmarks yet</h4><p>Bookmark posts to find them quickly later!</p></div>`; return; }
+      el.innerHTML = bm.map(p => buildPostCard(p, currentUser)).join('');
+    }
+
+    function renderAbout() {
+      const el = document.getElementById('about-content');
+      const rank = getLeaderboard().find(u => u.id === profileUser.id)?.rank || '—';
+      el.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-6);">
+          <div>
+            <h4 style="margin-bottom:var(--sp-4);font-size:1rem;">Personal Info</h4>
+            <div style="display:flex;flex-direction:column;gap:var(--sp-3);">
+              <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                <i class="ph ph-user" style="color:var(--primary-light);font-size:1.1rem;width:20px;"></i>
+                <div><div style="font-size:0.75rem;color:var(--text-muted);">Full Name</div><div style="font-weight:600;font-size:0.9rem;">${profileUser.name}</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                <i class="ph ph-identification-badge" style="color:var(--primary-light);font-size:1.1rem;width:20px;"></i>
+                <div><div style="font-size:0.75rem;color:var(--text-muted);">Role</div><div style="font-weight:600;font-size:0.9rem;">${profileUser.role.charAt(0).toUpperCase()+profileUser.role.slice(1)}</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                <i class="ph ph-book-open" style="color:var(--primary-light);font-size:1.1rem;width:20px;"></i>
+                <div><div style="font-size:0.75rem;color:var(--text-muted);">Subject</div><div style="font-weight:600;font-size:0.9rem;">${profileUser.subject || 'N/A'}</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                <i class="ph ph-calendar-blank" style="color:var(--primary-light);font-size:1.1rem;width:20px;"></i>
+                <div><div style="font-size:0.75rem;color:var(--text-muted);">Joined</div><div style="font-weight:600;font-size:0.9rem;">${formatDate(new Date(profileUser.joined).getTime())}</div></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 style="margin-bottom:var(--sp-4);font-size:1rem;">Academic Stats</h4>
+            <div style="display:flex;flex-direction:column;gap:var(--sp-3);">
+              <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                <i class="ph ph-star" style="color:var(--warning);font-size:1.1rem;width:20px;"></i>
+                <div><div style="font-size:0.75rem;color:var(--text-muted);">Total Points</div><div style="font-weight:700;font-size:1rem;background:var(--grad-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${profileUser.points}</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                <i class="ph ph-trophy" style="color:var(--warning);font-size:1.1rem;width:20px;"></i>
+                <div><div style="font-size:0.75rem;color:var(--text-muted);">Leaderboard Rank</div><div style="font-weight:600;font-size:0.9rem;">#${rank}</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                <i class="ph ph-fire" style="color:var(--danger-light);font-size:1.1rem;width:20px;"></i>
+                <div><div style="font-size:0.75rem;color:var(--text-muted);">Current Streak</div><div style="font-weight:600;font-size:0.9rem;">${profileUser.streak} days 🔥</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                <i class="ph ph-medal" style="color:var(--accent);font-size:1.1rem;width:20px;"></i>
+                <div><div style="font-size:0.75rem;color:var(--text-muted);">Badges Earned</div><div style="font-weight:600;font-size:0.9rem;">${(profileUser.badges || []).length} badges</div></div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function switchProfileTab(tabId, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    function toggleFollowProfile() {
+      const isFollowing = toggleFollow(profileUser.id, currentUser.id);
+      const btn = document.getElementById('follow-profile-btn');
+      if (btn) {
+        btn.className = `btn ${isFollowing ? 'btn-secondary':'btn-primary'}`;
+        btn.innerHTML = `<i class="ph ${isFollowing ? 'ph-user-minus':'ph-user-plus'}"></i> ${isFollowing ? 'Following':'Follow'}`;
+      }
+      profileUser = getUser(profileUser.id);
+      currentUser = getCurrentUser();
+      showToast(isFollowing ? `Following ${profileUser.name}!` : 'Unfollowed', 'success');
+      // Update stats
+      const statsEl = document.getElementById('profile-stats');
+      const userPosts = getPosts().filter(p => p.authorId === profileUser.id);
+      statsEl.innerHTML = `
+        <div class="stat-item"><div class="stat-value">${userPosts.length}</div><div class="stat-label">Posts</div></div>
+        <div class="stat-item"><div class="stat-value">${profileUser.followers.length}</div><div class="stat-label">Followers</div></div>
+        <div class="stat-item"><div class="stat-value">${profileUser.following.length}</div><div class="stat-label">Following</div></div>
+        <div class="stat-item"><div class="stat-value">${profileUser.points}</div><div class="stat-label">Points</div></div>`;
+    }
+
+    function openEditModal() {
+      document.getElementById('edit-name').value = profileUser.name;
+      document.getElementById('edit-bio').value = profileUser.bio || '';
+      document.getElementById('edit-subject').value = profileUser.subject || '';
+      openModal('edit-modal');
+    }
+
+    function saveProfile() {
+      const name    = document.getElementById('edit-name').value.trim();
+      const bio     = document.getElementById('edit-bio').value.trim();
+      const subject = document.getElementById('edit-subject').value;
+      if (!name) { showToast('Name cannot be empty','warning'); return; }
+      const initials = name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+      updateUser(currentUser.id, { name, bio, subject, avatar: initials });
+      currentUser = getCurrentUser();
+      profileUser = getUser(profileUser.id);
+      closeModal('edit-modal');
+      showToast('Profile updated!','success');
+      renderProfile();
+    }
+  </script>
+</body>
+</html>

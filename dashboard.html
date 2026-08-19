@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Performance Dashboard — EduConnect</title>
+  <meta name="description" content="Track your academic performance, subject-wise marks, strengths and weaknesses on EduConnect's performance dashboard.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .dashboard-layout { max-width: 1050px; margin: 0 auto; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--sp-4);
+      margin-bottom: var(--sp-6);
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-5);
+      margin-bottom: var(--sp-5);
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-5);
+      backdrop-filter: blur(20px);
+    }
+
+    .chart-card h4 { font-size: 0.95rem; margin-bottom: var(--sp-4); display: flex; align-items: center; gap: var(--sp-2); }
+
+    .subject-row {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: var(--sp-3) 0;
+      border-bottom: 1px solid var(--divider);
+    }
+    .subject-row:last-child { border-bottom: none; }
+
+    .subject-name { min-width: 100px; font-size: 0.875rem; font-weight: 500; }
+    .subject-score { min-width: 40px; text-align: right; font-size: 0.875rem; font-weight: 700; }
+
+    .weakness-badge {
+      padding: 3px 8px;
+      border-radius: var(--r-full);
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+
+    .rec-card {
+      background: var(--bg-glass);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-4);
+      display: flex;
+      gap: var(--sp-3);
+      align-items: flex-start;
+    }
+
+    .rec-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--r-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 900px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="dashboard-layout">
+        <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <h1>Performance Dashboard</h1>
+            <p id="dash-subtitle">Your academic progress at a glance</p>
+          </div>
+          <div id="student-selector"></div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="stats-grid" id="stats-grid"></div>
+
+        <!-- Charts Row -->
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h4><i class="ph ph-chart-bar" style="color:var(--primary-light);"></i> Subject-wise Marks</h4>
+            <div class="chart-container" style="height:240px;">
+              <canvas id="bar-chart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h4><i class="ph ph-chart-pie-slice" style="color:var(--accent);"></i> Performance Radar</h4>
+            <div class="chart-container" style="height:240px;">
+              <canvas id="radar-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subject Breakdown + Recommendations -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-5);margin-bottom:var(--sp-5);">
+          <div class="chart-card">
+            <h4><i class="ph ph-list-checks" style="color:var(--success);"></i> Subject Breakdown</h4>
+            <div id="subject-breakdown"></div>
+          </div>
+          <div class="chart-card">
+            <h4><i class="ph ph-lightbulb" style="color:var(--warning);"></i> AI Recommendations</h4>
+            <div id="recommendations" style="display:flex;flex-direction:column;gap:var(--sp-3);"></div>
+          </div>
+        </div>
+
+        <!-- Quiz History -->
+        <div class="chart-card" style="margin-bottom:var(--sp-5);">
+          <h4><i class="ph ph-trend-up" style="color:var(--accent);"></i> Quiz Score Trend</h4>
+          <div class="chart-container" style="height:180px;">
+            <canvas id="line-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Streak & Points -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-5);">
+          <div class="chart-card">
+            <h4><i class="ph ph-fire" style="color:var(--warning);"></i> Activity Streak</h4>
+            <div id="streak-display-main"></div>
+          </div>
+          <div class="chart-card">
+            <h4><i class="ph ph-trophy" style="color:var(--warning);"></i> Points & Badges</h4>
+            <div id="points-display"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentUser, viewUser, barChart, radarChart, lineChart;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      currentUser = requireAuth();
+      if (!currentUser) return;
+      buildSidebar('dashboard');
+
+      viewUser = currentUser;
+
+      if (currentUser.role === 'teacher') {
+        document.getElementById('dash-subtitle').textContent = 'Monitor your students\' performance';
+        buildStudentSelector();
+      }
+
+      renderDashboard();
+    });
+
+    function buildStudentSelector() {
+      const students = getAllUsers().filter(u => u.role === 'student');
+      const el = document.getElementById('student-selector');
+      el.innerHTML = `
+        <select class="form-select" onchange="viewStudentDash(this.value)" style="width:200px;">
+          <option value="${currentUser.id}">My Overview</option>
+          ${students.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+        </select>`;
+    }
+
+    function viewStudentDash(userId) {
+      viewUser = getUser(userId);
+      renderDashboard();
+    }
+
+    function renderDashboard() {
+      const perf = getStudentPerformance(viewUser.id);
+      const marks = perf.marks;
+      const subjects = Object.keys(marks);
+      const scores   = Object.values(marks);
+      const avg      = Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+      const best     = subjects[scores.indexOf(Math.max(...scores))];
+      const weakest  = subjects[scores.indexOf(Math.min(...scores))];
+      const quizzes  = getQuizzes().filter(q => q.submissions[viewUser.id]);
+
+      // Stats
+      document.getElementById('stats-grid').innerHTML = `
+        <div class="stats-card">
+          <div class="stats-card-icon" style="background:rgba(124,58,237,0.15);"><i class="ph ph-chart-bar" style="color:var(--primary-light);"></i></div>
+          <div>
+            <div class="stats-card-value" style="background:var(--grad-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${avg}%</div>
+            <div class="stats-card-label">Average Score</div>
+            <div class="stats-card-change up"><i class="ph ph-trend-up"></i> +3% this month</div>
+          </div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-icon" style="background:rgba(16,185,129,0.15);"><i class="ph ph-trophy" style="color:var(--success);"></i></div>
+          <div>
+            <div class="stats-card-value" style="background:var(--grad-success);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${best}</div>
+            <div class="stats-card-label">Best Subject</div>
+          </div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-icon" style="background:rgba(239,68,68,0.15);"><i class="ph ph-warning" style="color:var(--danger);"></i></div>
+          <div>
+            <div class="stats-card-value" style="background:var(--grad-danger);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${weakest}</div>
+            <div class="stats-card-label">Needs Work</div>
+          </div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-icon" style="background:rgba(6,182,212,0.15);"><i class="ph ph-clipboard-text" style="color:var(--accent);"></i></div>
+          <div>
+            <div class="stats-card-value" style="background:var(--grad-cyan);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${quizzes.length}</div>
+            <div class="stats-card-label">Quizzes Taken</div>
+          </div>
+        </div>`;
+
+      // Bar Chart
+      renderBarChart(subjects, scores);
+      renderRadarChart(subjects, scores);
+      renderLineChart(quizzes);
+      renderBreakdown(subjects, scores, marks);
+      renderRecommendations(marks, weakest, best, avg);
+      renderStreak(viewUser);
+      renderPoints(viewUser);
+    }
+
+    function renderBarChart(labels, data) {
+      if (barChart) barChart.destroy();
+      const ctx = document.getElementById('bar-chart').getContext('2d');
+      barChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Score %',
+            data,
+            backgroundColor: data.map(d => d >= 80 ? 'rgba(16,185,129,0.7)' : d >= 60 ? 'rgba(6,182,212,0.7)' : d >= 40 ? 'rgba(245,158,11,0.7)' : 'rgba(239,68,68,0.7)'),
+            borderColor:     data.map(d => d >= 80 ? '#10b981' : d >= 60 ? '#06b6d4' : d >= 40 ? '#f59e0b' : '#ef4444'),
+            borderWidth: 1.5,
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+            x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 }, maxRotation: 30 } }
+          }
+        }
+      });
+    }
+
+    function renderRadarChart(labels, data) {
+      if (radarChart) radarChart.destroy();
+      const ctx = document.getElementById('radar-chart').getContext('2d');
+      radarChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Score %',
+            data,
+            backgroundColor: 'rgba(124,58,237,0.15)',
+            borderColor: '#7c3aed',
+            borderWidth: 2,
+            pointBackgroundColor: '#9f67ff',
+            pointRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            r: {
+              min: 0, max: 100,
+              grid: { color: 'rgba(255,255,255,0.06)' },
+              ticks: { display: false },
+              pointLabels: { color: '#94a3b8', font: { size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    function renderLineChart(quizzes) {
+      if (lineChart) lineChart.destroy();
+      const ctx = document.getElementById('line-chart').getContext('2d');
+      const labels = quizzes.map(q => q.title.slice(0,12) + '…');
+      const data   = quizzes.map(q => { const s = q.submissions[viewUser.id]; return Math.round((s.score/s.total)*100); });
+
+      lineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels.length ? labels : ['No quizzes yet'],
+          datasets: [{
+            label: 'Score %',
+            data: data.length ? data : [0],
+            borderColor: '#7c3aed',
+            backgroundColor: 'rgba(124,58,237,0.1)',
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#9f67ff',
+            pointRadius: 5,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 11 }, callback: v => v+'%' } },
+            x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function renderBreakdown(subjects, scores, marks) {
+      const el = document.getElementById('subject-breakdown');
+      el.innerHTML = subjects.map((sub, i) => {
+        const score = scores[i];
+        const color = score >= 80 ? 'success' : score >= 60 ? 'accent' : score >= 40 ? 'warning' : 'danger';
+        const label = score >= 80 ? 'Strong' : score >= 60 ? 'Good' : score >= 40 ? 'Average' : 'Needs Work';
+        const barColor = score >= 80 ? 'var(--grad-success)' : score >= 60 ? 'var(--grad-cyan)' : score >= 40 ? 'var(--grad-warning)' : 'var(--grad-danger)';
+        return `
+          <div class="subject-row">
+            <div class="subject-name">${sub}</div>
+            <div style="flex:1;"><div class="progress-bar"><div class="progress-fill" style="width:${score}%;background:${barColor};"></div></div></div>
+            <div class="subject-score">${score}%</div>
+            <span class="weakness-badge badge-${color}">${label}</span>
+          </div>`;
+      }).join('');
+    }
+
+    function renderRecommendations(marks, weakest, best, avg) {
+      const el = document.getElementById('recommendations');
+      const recs = [];
+      if (marks[weakest] < 60) recs.push({ icon:'📖', color:'rgba(239,68,68,0.15)', text:`Focus on <strong>${weakest}</strong> — your score is ${marks[weakest]}%. Try the chapter summaries and practice more MCQs.`, tag:'High Priority' });
+      if (avg < 75) recs.push({ icon:'⏰', color:'rgba(245,158,11,0.15)', text:'Set a daily study schedule of at least 2 hours. Consistency is key to improvement!', tag:'Habit' });
+      if (marks[best] >= 80) recs.push({ icon:'🌟', color:'rgba(16,185,129,0.15)', text:`Excellent in <strong>${best}</strong>! Consider helping classmates and posting notes to earn more points.`, tag:'Strength' });
+      recs.push({ icon:'🧠', color:'rgba(124,58,237,0.15)', text:'Review your incorrect quiz answers. Understanding mistakes is the fastest way to improve.', tag:'Study Tip' });
+      recs.push({ icon:'🤝', color:'rgba(6,182,212,0.15)', text:'Join a study group for your weaker subjects. Teaching others reinforces your own learning!', tag:'Collaboration' });
+
+      el.innerHTML = recs.slice(0,4).map(r => `
+        <div class="rec-card">
+          <div class="rec-icon" style="background:${r.color};">${r.icon}</div>
+          <div style="flex:1;">
+            <div style="font-size:0.82rem;color:var(--text-secondary);line-height:1.5;">${r.text}</div>
+            <span class="badge badge-primary" style="margin-top:6px;font-size:0.65rem;">${r.tag}</span>
+          </div>
+        </div>`).join('');
+    }
+
+    function renderStreak(user) {
+      const el = document.getElementById('streak-display-main');
+      el.innerHTML = `
+        <div class="streak-display">
+          <div class="streak-flame">🔥</div>
+          <div>
+            <div class="streak-count">${user.streak}</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);">day streak</div>
+          </div>
+        </div>
+        <div style="margin-top:var(--sp-4);">
+          <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted);margin-bottom:var(--sp-2);">
+            <span>Weekly Goal</span>
+            <span>${Math.min(user.streak,7)}/7 days</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(user.streak/7*100,100)}%;background:linear-gradient(135deg,#f59e0b,#ea580c);"></div></div>
+        </div>
+        <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-3);">
+          ${'SMTWTFS'.split('').map((d,i)=>`<div style="flex:1;text-align:center;"><div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:4px;">${d}</div><div style="width:100%;aspect-ratio:1;border-radius:var(--r-sm);background:${i < user.streak % 7 ? 'var(--grad-warning)':'var(--bg-glass)'};"></div></div>`).join('')}
+        </div>`;
+    }
+
+    function renderPoints(user) {
+      const rank = getLeaderboard().find(u => u.id === user.id)?.rank || '—';
+      const earned = user.badges || [];
+      el = document.getElementById('points-display');
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;gap:var(--sp-4);margin-bottom:var(--sp-4);">
+          <div style="text-align:center;">
+            <div style="font-family:var(--font-display);font-size:2rem;font-weight:900;background:var(--grad-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${user.points}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">Total Points</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-family:var(--font-display);font-size:2rem;font-weight:900;color:var(--warning);">#${rank}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">Leaderboard</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-family:var(--font-display);font-size:2rem;font-weight:900;color:var(--accent);">${earned.length}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">Badges</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--sp-2);">
+          ${earned.map(bid => {
+            const a = ACHIEVEMENTS_LIST.find(ac => ac.id === bid);
+            return a ? `<span title="${a.name}: ${a.desc}" style="font-size:1.3rem;cursor:help;">${a.icon}</span>` : '';
+          }).join('')}
+        </div>`;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages — EduConnect</title>
+  <meta name="description" content="Educational messaging on EduConnect. Chat with teachers and fellow students.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <style>
+    .messages-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 0;
+      height: calc(100vh - var(--sp-16));
+      max-width: 1000px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-2xl);
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+    }
+
+    .conv-list {
+      border-right: 1px solid var(--divider);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .conv-list-header {
+      padding: var(--sp-5) var(--sp-4);
+      border-bottom: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .conv-list-search { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--divider); flex-shrink: 0; }
+
+    .conv-items { overflow-y: auto; flex: 1; }
+
+    .conv-item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      cursor: pointer;
+      border-bottom: 1px solid var(--divider);
+      transition: background var(--t-fast);
+    }
+    .conv-item:hover { background: var(--bg-glass-hover); }
+    .conv-item.active { background: rgba(124,58,237,0.1); border-right: 2px solid var(--primary); }
+
+    .conv-item-info { flex: 1; min-width: 0; }
+    .conv-name { font-weight: 600; font-size: 0.875rem; color: var(--text-primary); }
+    .conv-last-msg { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .conv-time { font-size: 0.68rem; color: var(--text-muted); flex-shrink: 0; }
+
+    /* Chat Panel */
+    .chat-panel {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .chat-header {
+      padding: var(--sp-4) var(--sp-5);
+      border-bottom: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      flex-shrink: 0;
+    }
+
+    .chat-header-info { flex: 1; }
+    .chat-partner-name { font-weight: 700; font-size: 0.95rem; }
+    .chat-partner-sub  { font-size: 0.75rem; color: var(--text-muted); }
+    .online-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; display: inline-block; }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--sp-5);
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-3);
+    }
+
+    .msg-row { display: flex; align-items: flex-end; gap: var(--sp-2); }
+    .msg-row.sent { flex-direction: row-reverse; }
+
+    .chat-input-bar {
+      padding: var(--sp-4) var(--sp-5);
+      border-top: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      flex-shrink: 0;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: var(--bg-glass);
+      border: 1px solid var(--border);
+      border-radius: var(--r-full);
+      padding: var(--sp-3) var(--sp-4);
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      transition: all var(--t-fast);
+    }
+    .chat-input:focus { border-color: var(--primary); outline: none; }
+    .chat-input::placeholder { color: var(--text-muted); }
+
+    .no-chat-selected {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      gap: var(--sp-4);
+    }
+
+    .date-separator {
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin: var(--sp-2) 0;
+      position: relative;
+    }
+    .date-separator::before, .date-separator::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 40%;
+      height: 1px;
+      background: var(--divider);
+    }
+    .date-separator::before { left: 0; }
+    .date-separator::after  { right: 0; }
+
+    @media (max-width: 768px) {
+      .messages-layout { grid-template-columns: 1fr; height: auto; }
+      .conv-list { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Messages</h1>
+        <p>Educational conversations with your network</p>
+      </div>
+
+      <div class="messages-layout">
+        <!-- Conversations List -->
+        <div class="conv-list">
+          <div class="conv-list-header">
+            <span style="font-weight:700;font-size:0.95rem;">Chats</span>
+            <button class="btn btn-primary btn-sm" onclick="openNewChatModal()"><i class="ph ph-plus"></i> New</button>
+          </div>
+          <div class="conv-list-search">
+            <div class="search-bar" style="border-radius:var(--r-md);">
+              <i class="ph ph-magnifying-glass"></i>
+              <input type="text" placeholder="Search conversations…" id="conv-search" oninput="filterConvs()">
+            </div>
+          </div>
+          <div class="conv-items" id="conv-items"></div>
+        </div>
+
+        <!-- Chat Panel -->
+        <div class="chat-panel" id="chat-panel">
+          <div class="no-chat-selected" id="no-chat-selected">
+            <i class="ph ph-chat-circle-dots" style="font-size:3rem;opacity:0.2;"></i>
+            <div style="text-align:center;">
+              <div style="font-size:1rem;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">Select a conversation</div>
+              <div style="font-size:0.82rem;">Choose a chat from the left or start a new one</div>
+            </div>
+            <button class="btn btn-primary" onclick="openNewChatModal()"><i class="ph ph-plus"></i> Start Chat</button>
+          </div>
+
+          <div id="active-chat" class="hidden" style="display:flex;flex-direction:column;height:100%;">
+            <div class="chat-header" id="chat-header"></div>
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input-bar">
+              <button class="btn btn-ghost btn-icon" title="Attach resource" onclick="showToast('File sharing coming soon!','info')"><i class="ph ph-paperclip"></i></button>
+              <input type="text" class="chat-input" id="chat-input" placeholder="Type an educational message…" onkeydown="if(event.key==='Enter')sendMsg()">
+              <button class="btn btn-primary btn-icon" onclick="sendMsg()" title="Send"><i class="ph ph-paper-plane-tilt"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- New Chat Modal -->
+  <div class="modal-overlay hidden" id="new-chat-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="ph ph-chat-circle-plus"></i> Start New Chat</h3>
+        <button class="modal-close" onclick="closeModal('new-chat-modal')"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Search users</label>
+          <input type="text" class="form-input" id="new-chat-search" placeholder="Type a name…" oninput="searchNewChatUsers()">
+        </div>
+        <div id="new-chat-results" style="display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-3);"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentUser, activeConvId = null, allConvs = [];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      currentUser = requireAuth();
+      if (!currentUser) return;
+      buildSidebar('messages');
+      loadConvs();
+
+      // Auto-open chat if ?to param
+      const toId = getParam('to');
+      if (toId) {
+        const conv = getOrCreateConv(currentUser.id, toId);
+        openChat(conv.id);
+      }
+    });
+
+    function loadConvs() {
+      allConvs = getConversations(currentUser.id);
+      renderConvList(allConvs);
+    }
+
+    function renderConvList(convs) {
+      const el = document.getElementById('conv-items');
+      if (!convs.length) {
+        el.innerHTML = `<div class="empty-state" style="padding:var(--sp-8)"><i class="ph ph-chat-circle"></i><h4>No chats yet</h4><p>Start a conversation!</p></div>`;
+        return;
+      }
+      el.innerHTML = convs.map(conv => {
+        const partnerId = conv.participants.find(p => p !== currentUser.id);
+        const partner = getUser(partnerId);
+        if (!partner) return '';
+        const lastMsg = conv.messages[conv.messages.length - 1];
+        const lastMsgText = lastMsg ? lastMsg.text : 'Start a conversation…';
+        const lastMsgTime = lastMsg ? timeAgo(lastMsg.ts) : '';
+        const avatarStyle = partner.bg ? `style="background:${partner.bg}"` : '';
+        return `
+          <div class="conv-item ${conv.id === activeConvId ? 'active' : ''}" onclick="openChat('${conv.id}')" id="conv-item-${conv.id}">
+            <div class="avatar avatar-md" ${avatarStyle}>${partner.avatar}</div>
+            <div class="conv-item-info">
+              <div class="conv-name">${partner.name} ${partner.role==='teacher'?'<span class="badge badge-teacher" style="font-size:0.6rem;">Teacher</span>':''}</div>
+              <div class="conv-last-msg">${escapeHtml(lastMsgText)}</div>
+            </div>
+            <div class="conv-time">${lastMsgTime}</div>
+          </div>`;
+      }).join('');
+    }
+
+    function filterConvs() {
+      const search = document.getElementById('conv-search').value.toLowerCase();
+      const filtered = allConvs.filter(conv => {
+        const partnerId = conv.participants.find(p => p !== currentUser.id);
+        const partner = getUser(partnerId);
+        return partner && partner.name.toLowerCase().includes(search);
+      });
+      renderConvList(filtered);
+    }
+
+    function openChat(convId) {
+      activeConvId = convId;
+      const conv = getConversations(currentUser.id).find(c => c.id === convId);
+      if (!conv) return;
+
+      const partnerId = conv.participants.find(p => p !== currentUser.id);
+      const partner   = getUser(partnerId);
+      if (!partner) return;
+
+      // Mark conv active in list
+      document.querySelectorAll('.conv-item').forEach(el => el.classList.remove('active'));
+      const convEl = document.getElementById(`conv-item-${convId}`);
+      if (convEl) convEl.classList.add('active');
+
+      // Show chat
+      document.getElementById('no-chat-selected').style.display = 'none';
+      const activeChat = document.getElementById('active-chat');
+      activeChat.classList.remove('hidden');
+      activeChat.style.display = 'flex';
+
+      // Header
+      const avatarStyle = partner.bg ? `style="background:${partner.bg}"` : '';
+      document.getElementById('chat-header').innerHTML = `
+        <div class="avatar avatar-md" ${avatarStyle}>${partner.avatar}</div>
+        <div class="chat-header-info">
+          <div class="chat-partner-name">${partner.name} ${partner.role==='teacher'?'<span class="badge badge-teacher" style="font-size:0.65rem;">Teacher</span>':''}</div>
+          <div class="chat-partner-sub"><span class="online-dot"></span> ${partner.subject} • Active now</div>
+        </div>
+        <a href="profile.html?id=${partner.id}" class="btn btn-ghost btn-icon" title="View Profile"><i class="ph ph-user"></i></a>`;
+
+      // Messages
+      renderMessages(conv.messages);
+
+      // Scroll to bottom
+      const messagesEl = document.getElementById('chat-messages');
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      document.getElementById('chat-input').focus();
+    }
+
+    function renderMessages(messages) {
+      const el = document.getElementById('chat-messages');
+      if (!messages.length) {
+        el.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:0.82rem;padding:var(--sp-8)">Start your educational conversation! 📚</div>`;
+        return;
+      }
+
+      let lastDate = '';
+      el.innerHTML = messages.map(msg => {
+        const sender = getUser(msg.from);
+        const isSent = msg.from === currentUser.id;
+        const msgDate = new Date(msg.ts).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+        let dateSep = '';
+        if (msgDate !== lastDate) { dateSep = `<div class="date-separator">${msgDate}</div>`; lastDate = msgDate; }
+
+        const avatarStyle = sender?.bg ? `style="background:${sender.bg}"` : '';
+        return `
+          ${dateSep}
+          <div class="msg-row ${isSent ? 'sent' : ''}">
+            ${!isSent ? `<div class="avatar avatar-xs" ${avatarStyle}>${sender?.avatar||'?'}</div>` : ''}
+            <div>
+              <div class="msg-bubble ${isSent ? 'sent' : 'received'}">${escapeHtml(msg.text)}</div>
+              <div class="msg-time" style="${isSent?'text-align:right':''}">${timeAgo(msg.ts)}</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function sendMsg() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text || !activeConvId) return;
+      sendMessage(activeConvId, currentUser.id, text);
+      input.value = '';
+
+      // Re-render
+      const conv = getConversations(currentUser.id).find(c => c.id === activeConvId);
+      if (conv) {
+        renderMessages(conv.messages);
+        const messagesEl = document.getElementById('chat-messages');
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+      loadConvs();
+    }
+
+    function openNewChatModal() {
+      document.getElementById('new-chat-search').value = '';
+      document.getElementById('new-chat-results').innerHTML = '';
+      openModal('new-chat-modal');
+      searchNewChatUsers();
+    }
+
+    function searchNewChatUsers() {
+      const q = document.getElementById('new-chat-search').value.toLowerCase();
+      const users = getAllUsers().filter(u => u.id !== currentUser.id && u.role !== 'admin' && (!q || u.name.toLowerCase().includes(q)));
+      const el = document.getElementById('new-chat-results');
+      el.innerHTML = users.slice(0,6).map(u => {
+        const avatarStyle = u.bg ? `style="background:${u.bg}"` : '';
+        return `
+          <div class="user-suggest-card" style="padding:var(--sp-3);background:var(--bg-glass);border-radius:var(--r-md);cursor:pointer;" onclick="startChatWith('${u.id}')">
+            <div class="avatar avatar-sm" ${avatarStyle}>${u.avatar}</div>
+            <div class="user-suggest-info">
+              <div class="user-suggest-name">${u.name}</div>
+              <div class="user-suggest-sub">${u.role} • ${u.subject}</div>
+            </div>
+            <i class="ph ph-chat-circle" style="color:var(--primary-light);"></i>
+          </div>`;
+      }).join('');
+    }
+
+    function startChatWith(userId) {
+      const conv = getOrCreateConv(currentUser.id, userId);
+      closeModal('new-chat-modal');
+      allConvs = getConversations(currentUser.id);
+      renderConvList(allConvs);
+      openChat(conv.id);
+    }
+  </script>
+</body>
+</html>

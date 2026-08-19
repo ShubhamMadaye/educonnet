@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quizzes & Assignments — EduConnect</title>
+  <meta name="description" content="Take quizzes, submit assignments, and track your academic performance on EduConnect.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <style>
+    .quiz-layout { max-width: 900px; margin: 0 auto; }
+
+    .quiz-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: var(--sp-4);
+    }
+
+    /* Quiz Taking UI */
+    .quiz-take-view { max-width: 720px; margin: 0 auto; }
+
+    .quiz-take-header {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-5);
+      margin-bottom: var(--sp-5);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(20px);
+    }
+
+    .q-progress {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .question-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-6);
+      backdrop-filter: blur(20px);
+      margin-bottom: var(--sp-4);
+      animation: fadeInUp 0.4s ease;
+    }
+
+    .question-num { font-size: 0.8rem; font-weight: 700; color: var(--primary-light); margin-bottom: var(--sp-2); text-transform: uppercase; letter-spacing: 0.05em; }
+    .question-text { font-size: 1.05rem; font-weight: 600; margin-bottom: var(--sp-5); color: var(--text-primary); line-height: 1.5; }
+
+    /* Results */
+    .result-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-2xl);
+      padding: var(--sp-8);
+      text-align: center;
+      backdrop-filter: blur(20px);
+    }
+
+    .score-circle {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: conic-gradient(var(--primary) 0deg, var(--bg-glass) 0deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--sp-5);
+      position: relative;
+    }
+
+    .score-inner {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: var(--bg-elevated);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .score-pct {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 900;
+      background: var(--grad-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Assignment */
+    .assignment-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-5);
+      display: flex;
+      gap: var(--sp-4);
+      transition: all var(--t-normal);
+    }
+    .assignment-card:hover { border-color: rgba(124,58,237,0.3); transform: translateY(-2px); }
+
+    /* Create Quiz */
+    .question-builder {
+      background: var(--bg-glass);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-4);
+      margin-bottom: var(--sp-3);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <!-- List View -->
+      <div id="list-view" class="quiz-layout">
+        <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <h1>Quizzes & Assignments</h1>
+            <p>Test your knowledge and submit assignments</p>
+          </div>
+          <div id="teacher-create-btn"></div>
+        </div>
+
+        <div class="tabs" id="quiz-tabs-container">
+          <button class="tab-btn active" onclick="switchQTab('quizzes',this)"><i class="ph ph-clipboard-text"></i> Quizzes</button>
+          <button class="tab-btn" onclick="switchQTab('assignments',this)"><i class="ph ph-notebook"></i> Assignments</button>
+          <button class="tab-btn" id="results-tab-btn" onclick="switchQTab('results',this)"><i class="ph ph-chart-bar"></i> Results</button>
+        </div>
+
+        <!-- Quizzes Tab -->
+        <div id="tab-quizzes" class="quiz-grid"></div>
+
+        <!-- Assignments Tab -->
+        <div id="tab-assignments" class="hidden" style="display:flex;flex-direction:column;gap:var(--sp-3);"></div>
+
+        <!-- Results Tab -->
+        <div id="tab-results" class="hidden" style="display:flex;flex-direction:column;gap:var(--sp-3);"></div>
+      </div>
+
+      <!-- Quiz Taking View -->
+      <div id="quiz-take-view" class="hidden quiz-take-view">
+        <button class="btn btn-secondary btn-sm" style="margin-bottom:var(--sp-4);" onclick="exitQuiz()"><i class="ph ph-arrow-left"></i> Exit Quiz</button>
+        <div class="quiz-take-header">
+          <div>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;" id="take-subject"></div>
+            <div style="font-weight:700;font-size:1.1rem;" id="take-title"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--sp-4);">
+            <div class="q-progress">
+              <i class="ph ph-question"></i>
+              Question <span id="q-current">1</span> of <span id="q-total">5</span>
+            </div>
+            <div class="quiz-timer" id="quiz-timer">
+              <i class="ph ph-timer"></i>
+              <span id="timer-display">15:00</span>
+            </div>
+          </div>
+        </div>
+        <div class="progress-bar" style="margin-bottom:var(--sp-5);">
+          <div class="progress-fill" id="q-progress-bar" style="width:0%;transition:width 0.5s ease;"></div>
+        </div>
+        <div id="question-area"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:var(--sp-4);">
+          <button class="btn btn-secondary" id="prev-btn" onclick="prevQ()" style="display:none;"><i class="ph ph-arrow-left"></i> Previous</button>
+          <button class="btn btn-primary" id="next-btn" onclick="nextQ()">Next <i class="ph ph-arrow-right"></i></button>
+          <button class="btn btn-success hidden" id="submit-btn" onclick="submitQuizUI()"><i class="ph ph-check-circle"></i> Submit Quiz</button>
+        </div>
+      </div>
+
+      <!-- Results View -->
+      <div id="quiz-result-view" class="hidden quiz-take-view">
+        <button class="btn btn-secondary btn-sm" style="margin-bottom:var(--sp-4);" onclick="exitQuiz()"><i class="ph ph-arrow-left"></i> Back to Quizzes</button>
+        <div class="result-card" id="result-content"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Create Quiz Modal -->
+  <div class="modal-overlay hidden" id="create-quiz-modal">
+    <div class="modal modal-xl">
+      <div class="modal-header">
+        <h3><i class="ph ph-plus-circle"></i> Create New Quiz</h3>
+        <button class="modal-close" onclick="closeModal('create-quiz-modal')"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);margin-bottom:var(--sp-4);">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Quiz Title</label>
+            <input type="text" class="form-input" id="qz-title" placeholder="e.g. Newton's Laws of Motion">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Subject</label>
+            <select class="form-select" id="qz-subject">
+              <option value="Mathematics">Mathematics</option>
+              <option value="Physics">Physics</option>
+              <option value="Chemistry">Chemistry</option>
+              <option value="Biology">Biology</option>
+              <option value="Literature">Literature</option>
+              <option value="History">History</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Duration (minutes)</label>
+            <input type="number" class="form-input" id="qz-duration" value="15" min="5" max="120">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Due Date</label>
+            <input type="date" class="form-input" id="qz-due">
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-3);">
+          <span style="font-weight:700;">Questions</span>
+          <button class="btn btn-outline btn-sm" onclick="addQuestion()"><i class="ph ph-plus"></i> Add Question</button>
+        </div>
+        <div id="questions-builder"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('create-quiz-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveQuiz()"><i class="ph ph-floppy-disk"></i> Create Quiz</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentUser, activeQuiz = null, currentQ = 0, answers = {}, timerInterval = null;
+    let activeTab = 'quizzes';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      currentUser = requireAuth();
+      if (!currentUser) return;
+      buildSidebar('quizzes');
+
+      if (currentUser.role === 'teacher') {
+        document.getElementById('teacher-create-btn').innerHTML = `
+          <div style="display:flex;gap:var(--sp-2);">
+            <button class="btn btn-primary" onclick="openCreateQuiz()"><i class="ph ph-plus"></i> Create Quiz</button>
+            <button class="btn btn-secondary" onclick="showToast('Assignment creation coming soon!','info')"><i class="ph ph-notebook"></i> Add Assignment</button>
+          </div>`;
+      }
+
+      renderQuizzes();
+      renderAssignments();
+      renderResults();
+    });
+
+    function switchQTab(tab, btn) {
+      activeTab = tab;
+      document.querySelectorAll('#quiz-tabs-container .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-quizzes').classList.toggle('hidden', tab !== 'quizzes');
+      document.getElementById('tab-assignments').classList.toggle('hidden', tab !== 'assignments');
+      document.getElementById('tab-results').classList.toggle('hidden', tab !== 'results');
+      if (tab === 'quizzes')     document.getElementById('tab-quizzes').style.display = tab==='quizzes'?'grid':'none';
+      if (tab === 'assignments') document.getElementById('tab-assignments').style.display = tab==='assignments'?'flex':'none';
+      if (tab === 'results')     document.getElementById('tab-results').style.display = tab==='results'?'flex':'none';
+    }
+
+    function renderQuizzes() {
+      const quizzes = getQuizzes();
+      const el = document.getElementById('tab-quizzes');
+      if (!quizzes.length) { el.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><i class="ph ph-clipboard-text"></i><h4>No quizzes available</h4></div>`; return; }
+
+      el.innerHTML = quizzes.map(q => {
+        const author = getUser(q.authorId);
+        const submitted = q.submissions && q.submissions[currentUser.id];
+        const submittedCount = Object.keys(q.submissions || {}).length;
+        return `
+          <div class="quiz-card hover-lift">
+            <div class="quiz-icon"><i class="ph ph-clipboard-text"></i></div>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+                <div>
+                  <div style="font-weight:700;font-size:0.95rem;margin-bottom:4px;">${q.title}</div>
+                  <div style="font-size:0.78rem;color:var(--text-muted);">by ${author?.name || 'Teacher'}</div>
+                </div>
+                <span class="badge badge-primary">${q.subject}</span>
+              </div>
+              <div style="display:flex;gap:var(--sp-4);margin:var(--sp-3) 0;font-size:0.78rem;color:var(--text-muted);">
+                <span><i class="ph ph-question"></i> ${q.questions.length} questions</span>
+                <span><i class="ph ph-timer"></i> ${q.duration} min</span>
+                <span><i class="ph ph-users"></i> ${submittedCount} submitted</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:0.75rem;color:var(--text-muted);">Due: ${q.dueDate}</span>
+                ${submitted
+                  ? `<button class="btn btn-success btn-sm" onclick="viewResult('${q.id}')"><i class="ph ph-trophy"></i> View Result</button>`
+                  : (currentUser.role === 'student'
+                    ? `<button class="btn btn-primary btn-sm" onclick="startQuiz('${q.id}')"><i class="ph ph-play"></i> Take Quiz</button>`
+                    : `<button class="btn btn-secondary btn-sm" onclick="viewQuizSubmissions('${q.id}')"><i class="ph ph-chart-bar"></i> View Submissions (${submittedCount})</button>`)}
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function renderAssignments() {
+      const assignments = getAssignments();
+      const el = document.getElementById('tab-assignments');
+      if (!assignments.length) { el.innerHTML = `<div class="empty-state"><i class="ph ph-notebook"></i><h4>No assignments</h4></div>`; return; }
+
+      el.innerHTML = assignments.map(a => {
+        const author = getUser(a.authorId);
+        const submitted = a.submissions && a.submissions[currentUser.id];
+        const dueBadge = new Date(a.dueDate) < new Date() ? 'badge-danger' : 'badge-warning';
+        return `
+          <div class="assignment-card">
+            <div style="width:52px;height:52px;border-radius:var(--r-lg);background:rgba(6,182,212,0.15);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--accent);flex-shrink:0;"><i class="ph ph-notebook"></i></div>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+                <div>
+                  <div style="font-weight:700;font-size:0.95rem;margin-bottom:4px;">${a.title}</div>
+                  <div style="font-size:0.78rem;color:var(--text-muted);">by ${author?.name || 'Teacher'} • ${a.subject}</div>
+                  <div style="font-size:0.83rem;color:var(--text-secondary);margin-top:var(--sp-2);">${a.description}</div>
+                </div>
+                <span class="badge ${dueBadge}">Due: ${a.dueDate}</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:var(--sp-3);">
+                <span style="font-size:0.78rem;color:var(--text-muted);">Max Marks: ${a.maxMarks}</span>
+                ${submitted
+                  ? (submitted.grade !== null
+                    ? `<span class="badge badge-success"><i class="ph ph-check"></i> Graded: ${submitted.grade}/${a.maxMarks}</span>`
+                    : `<span class="badge badge-accent"><i class="ph ph-clock"></i> Submitted — Awaiting grade</span>`)
+                  : (currentUser.role === 'student'
+                    ? `<button class="btn btn-primary btn-sm" onclick="submitAssignmentUI('${a.id}')"><i class="ph ph-upload-simple"></i> Submit</button>`
+                    : `<button class="btn btn-secondary btn-sm" onclick="showToast('${Object.keys(a.submissions).length} submissions received','info')"><i class="ph ph-list"></i> ${Object.keys(a.submissions).length} Submissions</button>`)}
+              </div>
+              ${submitted?.feedback ? `<div style="margin-top:var(--sp-2);padding:var(--sp-2) var(--sp-3);background:rgba(16,185,129,0.08);border-radius:var(--r-md);font-size:0.8rem;color:var(--success-light);"><strong>Teacher feedback:</strong> ${submitted.feedback}</div>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function renderResults() {
+      const quizzes = getQuizzes();
+      const el = document.getElementById('tab-results');
+      const myResults = quizzes.filter(q => q.submissions && q.submissions[currentUser.id]);
+      if (!myResults.length) { el.innerHTML = `<div class="empty-state"><i class="ph ph-chart-bar"></i><h4>No results yet</h4><p>Take a quiz to see your results here!</p></div>`; return; }
+
+      el.innerHTML = myResults.map(q => {
+        const sub = q.submissions[currentUser.id];
+        const pct = Math.round((sub.score/sub.total)*100);
+        const grade = pct >= 80 ? 'A' : pct >= 60 ? 'B' : pct >= 40 ? 'C' : 'D';
+        const color = pct >= 80 ? 'success' : pct >= 60 ? 'accent' : pct >= 40 ? 'warning' : 'danger';
+        return `
+          <div class="card card-body" style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);">
+            <div>
+              <div style="font-weight:700;font-size:0.95rem;margin-bottom:4px;">${q.title}</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">${q.subject} • Taken ${timeAgo(sub.submittedAt)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:var(--sp-4);">
+              <div style="text-align:center;">
+                <div style="font-family:var(--font-display);font-size:1.5rem;font-weight:800;background:var(--grad-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${sub.score}/${sub.total}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Score</div>
+              </div>
+              <div style="text-align:center;">
+                <div class="badge badge-${color}" style="font-size:1rem;padding:6px 12px;">${pct}%</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">Grade ${grade}</div>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="viewResult('${q.id}')"><i class="ph ph-eye"></i> Review</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function startQuiz(quizId) {
+      activeQuiz = getQuiz(quizId);
+      if (!activeQuiz) return;
+      currentQ = 0;
+      answers = {};
+      document.getElementById('list-view').classList.add('hidden');
+      document.getElementById('quiz-take-view').classList.remove('hidden');
+      document.getElementById('take-subject').textContent = activeQuiz.subject;
+      document.getElementById('take-title').textContent = activeQuiz.title;
+      document.getElementById('q-total').textContent = activeQuiz.questions.length;
+      renderQuestion();
+      startTimer(activeQuiz.duration * 60);
+    }
+
+    function renderQuestion() {
+      const q = activeQuiz.questions[currentQ];
+      document.getElementById('q-current').textContent = currentQ + 1;
+      document.getElementById('q-progress-bar').style.width = `${((currentQ+1)/activeQuiz.questions.length)*100}%`;
+      document.getElementById('prev-btn').style.display = currentQ > 0 ? 'flex' : 'none';
+      const isLast = currentQ === activeQuiz.questions.length - 1;
+      document.getElementById('next-btn').classList.toggle('hidden', isLast);
+      document.getElementById('submit-btn').classList.toggle('hidden', !isLast);
+
+      const letters = ['A','B','C','D'];
+      document.getElementById('question-area').innerHTML = `
+        <div class="question-card">
+          <div class="question-num">Question ${currentQ+1} of ${activeQuiz.questions.length}</div>
+          <div class="question-text">${q.q}</div>
+          ${q.opts.map((opt,i) => `
+            <div class="mcq-option ${answers[currentQ] === i ? 'selected':''}" onclick="selectAnswer(${i})">
+              <div class="mcq-letter">${letters[i]}</div>
+              <div class="mcq-text">${opt}</div>
+            </div>`).join('')}
+        </div>`;
+    }
+
+    function selectAnswer(idx) {
+      answers[currentQ] = idx;
+      renderQuestion();
+    }
+
+    function nextQ() {
+      if (currentQ < activeQuiz.questions.length - 1) { currentQ++; renderQuestion(); }
+    }
+
+    function prevQ() {
+      if (currentQ > 0) { currentQ--; renderQuestion(); }
+    }
+
+    function submitQuizUI() {
+      clearInterval(timerInterval);
+      let score = 0;
+      activeQuiz.questions.forEach((q,i) => { if (answers[i] === q.ans) score++; });
+      submitQuiz(activeQuiz.id, currentUser.id, score, activeQuiz.questions.length);
+      awardPoints(currentUser.id, score * 20, 'quiz');
+      viewResult(activeQuiz.id);
+    }
+
+    function viewResult(quizId) {
+      const quiz = getQuiz(quizId);
+      const sub  = quiz.submissions[currentUser.id];
+      if (!sub) { startQuiz(quizId); return; }
+      const pct = Math.round((sub.score/sub.total)*100);
+      const emoji = pct >= 80 ? '🎉' : pct >= 60 ? '👍' : '📖';
+      const msg   = pct >= 80 ? 'Excellent work!' : pct >= 60 ? 'Good job!' : 'Keep practicing!';
+      const deg   = Math.round((pct/100)*360);
+
+      document.getElementById('list-view').classList.add('hidden');
+      document.getElementById('quiz-take-view').classList.add('hidden');
+      document.getElementById('quiz-result-view').classList.remove('hidden');
+
+      // Review answers
+      const reviewHTML = quiz.questions.map((q,i) => {
+        const chosen = answers[i] ?? -1;
+        const letters = ['A','B','C','D'];
+        return `
+          <div style="margin-bottom:var(--sp-4);">
+            <div style="font-weight:600;margin-bottom:var(--sp-2);font-size:0.9rem;">${i+1}. ${q.q}</div>
+            ${q.opts.map((opt,oi) => {
+              let cls = '';
+              if (oi === q.ans) cls = 'correct';
+              else if (oi === chosen && chosen !== q.ans) cls = 'wrong';
+              return `<div class="mcq-option ${cls}" style="cursor:default;"><div class="mcq-letter">${letters[oi]}</div><div class="mcq-text">${opt}</div></div>`;
+            }).join('')}
+          </div>`;
+      }).join('');
+
+      document.getElementById('result-content').innerHTML = `
+        <div style="font-size:2.5rem;margin-bottom:var(--sp-4);">${emoji}</div>
+        <h2 style="margin-bottom:var(--sp-2);">${msg}</h2>
+        <p style="color:var(--text-muted);margin-bottom:var(--sp-6);">${quiz.title}</p>
+        <div class="score-circle" style="background:conic-gradient(var(--primary) ${deg}deg, var(--bg-glass) ${deg}deg);">
+          <div class="score-inner">
+            <div class="score-pct">${pct}%</div>
+            <div style="font-size:0.7rem;color:var(--text-muted);">${sub.score}/${sub.total}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:var(--sp-6);justify-content:center;margin:var(--sp-5) 0;">
+          <div class="stat-item"><div class="stat-value">${sub.score}</div><div class="stat-label">Correct</div></div>
+          <div class="stat-item"><div class="stat-value">${sub.total - sub.score}</div><div class="stat-label">Wrong</div></div>
+          <div class="stat-item"><div class="stat-value">+${sub.score*20}</div><div class="stat-label">Points Earned</div></div>
+        </div>
+        <div class="divider"></div>
+        <div style="text-align:left;margin-top:var(--sp-5);">
+          <div style="font-weight:700;margin-bottom:var(--sp-4);">Answer Review</div>
+          ${reviewHTML}
+        </div>`;
+    }
+
+    function exitQuiz() {
+      clearInterval(timerInterval);
+      document.getElementById('list-view').classList.remove('hidden');
+      document.getElementById('quiz-take-view').classList.add('hidden');
+      document.getElementById('quiz-result-view').classList.add('hidden');
+      renderQuizzes();
+      renderAssignments();
+      renderResults();
+    }
+
+    function startTimer(seconds) {
+      let remaining = seconds;
+      const display = document.getElementById('timer-display');
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (remaining <= 0) { clearInterval(timerInterval); submitQuizUI(); return; }
+        remaining--;
+        const m = Math.floor(remaining/60).toString().padStart(2,'0');
+        const s = (remaining%60).toString().padStart(2,'0');
+        if (display) display.textContent = `${m}:${s}`;
+        if (remaining <= 60) {
+          const timerEl = document.getElementById('quiz-timer');
+          if (timerEl) timerEl.style.animation = 'pulse 1s ease-in-out infinite';
+        }
+      }, 1000);
+    }
+
+    function submitAssignmentUI(asgId) {
+      submitAssignment(asgId, currentUser.id);
+      awardPoints(currentUser.id, 15, 'assignment');
+      showToast('Assignment submitted! +15 points 🎉', 'success');
+      renderAssignments();
+    }
+
+    function viewQuizSubmissions(quizId) {
+      const quiz = getQuiz(quizId);
+      const subs = quiz.submissions || {};
+      const lines = Object.entries(subs).map(([uid, sub]) => {
+        const u = getUser(uid);
+        const pct = Math.round((sub.score/sub.total)*100);
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--sp-3) 0;border-bottom:1px solid var(--divider);">
+          <div style="font-size:0.875rem;">${u?.name || 'Student'}</div>
+          <div class="badge badge-${pct>=80?'success':pct>=60?'accent':'warning'}">${sub.score}/${sub.total} (${pct}%)</div>
+        </div>`;
+      }).join('');
+      showToast(`${Object.keys(subs).length} submission(s) for this quiz`, 'info');
+    }
+
+    // ── Create Quiz ──
+    let quizQuestions = [];
+
+    function openCreateQuiz() {
+      quizQuestions = [];
+      document.getElementById('questions-builder').innerHTML = '';
+      document.getElementById('qz-due').value = new Date(Date.now() + 7*86400000).toISOString().slice(0,10);
+      addQuestion();
+      openModal('create-quiz-modal');
+    }
+
+    function addQuestion() {
+      const idx = quizQuestions.length;
+      quizQuestions.push({ q:'', opts:['','','',''], ans:0 });
+      const el = document.getElementById('questions-builder');
+      const div = document.createElement('div');
+      div.className = 'question-builder animate-fade-in';
+      div.id = `qb-${idx}`;
+      div.innerHTML = `
+        <div style="font-size:0.8rem;font-weight:700;color:var(--primary-light);margin-bottom:var(--sp-3);">Question ${idx+1}</div>
+        <input type="text" class="form-input" placeholder="Enter question" id="qb-q-${idx}" style="margin-bottom:var(--sp-3);" oninput="quizQuestions[${idx}].q=this.value">
+        ${['A','B','C','D'].map((l,i) => `
+          <div style="display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-2);">
+            <input type="radio" name="correct-${idx}" id="ans-${idx}-${i}" ${i===0?'checked':''} onchange="quizQuestions[${idx}].ans=${i}" style="accent-color:var(--primary);">
+            <div class="mcq-letter" style="width:24px;height:24px;font-size:0.72rem;">${l}</div>
+            <input type="text" class="form-input" placeholder="Option ${l}" id="qb-opt-${idx}-${i}" oninput="quizQuestions[${idx}].opts[${i}]=this.value">
+          </div>`).join('')}`;
+      el.appendChild(div);
+    }
+
+    function saveQuiz() {
+      const title    = document.getElementById('qz-title').value.trim();
+      const subject  = document.getElementById('qz-subject').value;
+      const duration = parseInt(document.getElementById('qz-duration').value);
+      const dueDate  = document.getElementById('qz-due').value;
+      if (!title) { showToast('Enter a quiz title','warning'); return; }
+      if (quizQuestions.length === 0) { showToast('Add at least one question','warning'); return; }
+
+      const quiz = { id: genId('q'), title, subject, authorId: currentUser.id, duration, dueDate, totalMarks: quizQuestions.length, questions: quizQuestions, submissions: {}, status:'active' };
+      DB.update('edu_quizzes', qs => [...qs, quiz]);
+      closeModal('create-quiz-modal');
+      showToast('Quiz created! 🎉', 'success');
+      renderQuizzes();
+    }
+  </script>
+</body>
+</html>

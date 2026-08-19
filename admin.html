@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — EduConnect</title>
+  <meta name="description" content="EduConnect admin moderation panel. Review reported content, manage users, and monitor platform activity.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .admin-layout { max-width: 1100px; margin: 0 auto; }
+
+    .admin-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-4); margin-bottom: var(--sp-6); }
+
+    .admin-tabs { margin-bottom: var(--sp-5); }
+
+    .report-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-4) var(--sp-5);
+      display: flex;
+      align-items: flex-start;
+      gap: var(--sp-4);
+      margin-bottom: var(--sp-3);
+      backdrop-filter: blur(20px);
+      transition: border-color var(--t-fast);
+    }
+    .report-card:hover { border-color: rgba(239,68,68,0.3); }
+    .report-card.resolved { opacity: 0.5; }
+
+    .user-management-row {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      border-radius: var(--r-lg);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      margin-bottom: var(--sp-2);
+      transition: border-color var(--t-fast);
+    }
+    .user-management-row:hover { border-color: rgba(124,58,237,0.25); }
+
+    .activity-item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: var(--sp-3) 0;
+      border-bottom: 1px solid var(--divider);
+      font-size: 0.875rem;
+    }
+    .activity-item:last-child { border-bottom: none; }
+
+    @media (max-width: 900px) {
+      .admin-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="admin-layout">
+        <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <h1>🛡️ Admin Panel</h1>
+            <p>Platform moderation and management dashboard</p>
+          </div>
+          <div style="display:flex;gap:var(--sp-2);">
+            <span class="badge badge-danger" style="font-size:0.8rem;padding:6px 12px;" id="pending-count-badge">Loading…</span>
+            <button class="btn btn-secondary btn-sm" onclick="refreshAll()"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
+          </div>
+        </div>
+
+        <!-- Platform Stats -->
+        <div class="admin-stats" id="admin-stats"></div>
+
+        <!-- Chart Row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-5);margin-bottom:var(--sp-6);">
+          <div class="card card-body">
+            <h4 style="font-size:0.9rem;margin-bottom:var(--sp-4);"><i class="ph ph-chart-bar" style="color:var(--primary-light);"></i> Activity Overview</h4>
+            <div style="height:180px;"><canvas id="activity-chart"></canvas></div>
+          </div>
+          <div class="card card-body">
+            <h4 style="font-size:0.9rem;margin-bottom:var(--sp-4);"><i class="ph ph-chart-pie-slice" style="color:var(--accent);"></i> User Distribution</h4>
+            <div style="height:180px;"><canvas id="user-chart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs admin-tabs">
+          <button class="tab-btn active" onclick="switchAdminTab('reports',this)"><i class="ph ph-flag"></i> Reports <span class="nav-badge" id="reports-badge" style="position:static;display:inline;">0</span></button>
+          <button class="tab-btn" onclick="switchAdminTab('users',this)"><i class="ph ph-users"></i> Users</button>
+          <button class="tab-btn" onclick="switchAdminTab('posts',this)"><i class="ph ph-article"></i> All Posts</button>
+          <button class="tab-btn" onclick="switchAdminTab('activity',this)"><i class="ph ph-activity"></i> Activity Log</button>
+        </div>
+
+        <!-- Reports Tab -->
+        <div id="admin-tab-reports">
+          <div style="display:flex;gap:var(--sp-2);margin-bottom:var(--sp-4);">
+            <button class="chip active" onclick="setReportFilter('pending',this)">⏳ Pending</button>
+            <button class="chip" onclick="setReportFilter('all',this)">All</button>
+            <button class="chip" onclick="setReportFilter('resolved',this)">✅ Resolved</button>
+            <button class="chip" onclick="setReportFilter('dismissed',this)">❌ Dismissed</button>
+          </div>
+          <div id="reports-container"></div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="admin-tab-users" class="hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-4);">
+            <div class="search-bar" style="width:280px;">
+              <i class="ph ph-magnifying-glass"></i>
+              <input type="text" placeholder="Search users…" id="user-search" oninput="renderUsersTab()">
+            </div>
+            <select class="form-select" id="user-role-filter" style="width:150px;" onchange="renderUsersTab()">
+              <option value="all">All Roles</option>
+              <option value="student">Students</option>
+              <option value="teacher">Teachers</option>
+            </select>
+          </div>
+          <div id="users-container"></div>
+        </div>
+
+        <!-- Posts Tab -->
+        <div id="admin-tab-posts" class="hidden">
+          <div style="margin-bottom:var(--sp-4);display:flex;gap:var(--sp-2);">
+            <button class="chip active" onclick="setPostFilter('all',this)">All Posts</button>
+            <button class="chip" onclick="setPostFilter('announcement',this)">Announcements</button>
+            <button class="chip" onclick="setPostFilter('question',this)">Questions</button>
+            <button class="chip" onclick="setPostFilter('resource',this)">Resources</button>
+          </div>
+          <div class="card" style="overflow:hidden;">
+            <table class="admin-table" id="posts-table">
+              <thead>
+                <tr>
+                  <th>Author</th><th>Type</th><th>Subject</th><th>Likes</th><th>Posted</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="posts-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Activity Tab -->
+        <div id="admin-tab-activity" class="hidden">
+          <div class="card card-body">
+            <h4 style="font-size:0.9rem;margin-bottom:var(--sp-4);">Recent Platform Activity</h4>
+            <div id="activity-log"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentUser, reportFilter = 'pending', postFilter = 'all';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      currentUser = requireAuth();
+      if (!currentUser) return;
+      // Allow admin or teacher to access
+      if (currentUser.role !== 'admin' && currentUser.role !== 'teacher') {
+        showToast('Admin access required', 'error');
+        setTimeout(() => window.location.href = 'feed.html', 1200);
+        return;
+      }
+      buildSidebar('admin');
+      renderAll();
+    });
+
+    function renderAll() {
+      renderStats();
+      renderCharts();
+      renderReports();
+      renderUsersTab();
+      renderPostsTab();
+      renderActivityLog();
+    }
+
+    function refreshAll() { renderAll(); showToast('Dashboard refreshed', 'success'); }
+
+    function renderStats() {
+      const users   = getAllUsers().filter(u => u.role !== 'admin');
+      const posts   = getPosts();
+      const reports = getReports();
+      const pending = reports.filter(r => r.status === 'pending').length;
+
+      document.getElementById('pending-count-badge').textContent = `${pending} pending reports`;
+      document.getElementById('reports-badge').textContent = pending;
+
+      const el = document.getElementById('admin-stats');
+      el.innerHTML = [
+        { icon:'ph-users', label:'Total Users', value: users.length, color:'rgba(124,58,237,0.15)', textColor:'var(--primary-light)', change:'+3 this week' },
+        { icon:'ph-article', label:'Total Posts', value: posts.length, color:'rgba(6,182,212,0.15)', textColor:'var(--accent)', change:'+12 today' },
+        { icon:'ph-flag', label:'Pending Reports', value: pending, color:'rgba(239,68,68,0.15)', textColor:'var(--danger)', change: pending > 0 ? 'Needs attention!' : 'All clear!' },
+        { icon:'ph-graduation-cap', label:'Teachers', value: users.filter(u=>u.role==='teacher').length, color:'rgba(16,185,129,0.15)', textColor:'var(--success)', change:`${users.filter(u=>u.role==='student').length} students` },
+      ].map(s => `
+        <div class="stats-card">
+          <div class="stats-card-icon" style="background:${s.color};"><i class="ph ${s.icon}" style="color:${s.textColor};"></i></div>
+          <div>
+            <div class="stats-card-value" style="background:none;color:${s.textColor};-webkit-text-fill-color:${s.textColor};">${s.value}</div>
+            <div class="stats-card-label">${s.label}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">${s.change}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    function renderCharts() {
+      const posts = getPosts();
+      const types = ['post','note','question','resource','announcement'];
+      const counts = types.map(t => posts.filter(p => p.type === t).length);
+
+      const actCtx = document.getElementById('activity-chart').getContext('2d');
+      new Chart(actCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Posts','Notes','Questions','Resources','Announcements'],
+          datasets: [{ label:'Count', data:counts, backgroundColor:['rgba(124,58,237,0.7)','rgba(6,182,212,0.7)','rgba(245,158,11,0.7)','rgba(16,185,129,0.7)','rgba(239,68,68,0.7)'], borderRadius:4 }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#94a3b8',font:{size:10}}}, x:{grid:{display:false},ticks:{color:'#94a3b8',font:{size:9}}} } }
+      });
+
+      const users = getAllUsers().filter(u=>u.role!=='admin');
+      const userCtx = document.getElementById('user-chart').getContext('2d');
+      new Chart(userCtx, {
+        type: 'doughnut',
+        data: {
+          labels:['Students','Teachers'],
+          datasets:[{ data:[users.filter(u=>u.role==='student').length, users.filter(u=>u.role==='teacher').length], backgroundColor:['rgba(124,58,237,0.8)','rgba(6,182,212,0.8)'], borderColor:['#7c3aed','#06b6d4'], borderWidth:2 }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#94a3b8', font:{size:11} } } }, cutout:'70%' }
+      });
+    }
+
+    function renderReports() {
+      let reports = getReports();
+      if (reportFilter !== 'all') reports = reports.filter(r => r.status === reportFilter);
+      const el = document.getElementById('reports-container');
+      if (!reports.length) {
+        el.innerHTML = `<div class="empty-state"><i class="ph ph-flag"></i><h4>No ${reportFilter} reports</h4><p>Everything looks clean! 🎉</p></div>`;
+        return;
+      }
+
+      el.innerHTML = reports.map(r => {
+        const reporter = getUser(r.reporterId);
+        const post = r.type === 'post' ? getPost(r.targetId) : null;
+        return `
+          <div class="report-card ${r.status !== 'pending' ? 'resolved' : ''}">
+            <div style="font-size:1.5rem;">🚩</div>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-2);">
+                <span class="badge badge-danger">Report</span>
+                <span class="badge ${r.status==='pending'?'badge-warning':r.status==='resolved'?'badge-success':'badge-primary'}">${r.status}</span>
+                <span style="font-size:0.72rem;color:var(--text-muted);margin-left:auto;">${timeAgo(r.ts)}</span>
+              </div>
+              <div style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:var(--sp-1);">
+                <strong style="color:var(--text-primary);">Reporter:</strong> ${reporter?.name || 'Unknown'}
+              </div>
+              <div style="font-size:0.875rem;color:var(--text-secondary);margin-bottom:var(--sp-1);">
+                <strong style="color:var(--text-primary);">Reason:</strong> ${r.reason}
+              </div>
+              ${post ? `<div style="font-size:0.82rem;color:var(--text-muted);background:var(--bg-glass);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);margin-top:var(--sp-2);">"${post.text.slice(0,100)}${post.text.length>100?'…':''}"</div>` : ''}
+            </div>
+            ${r.status === 'pending' ? `
+              <div style="display:flex;flex-direction:column;gap:var(--sp-2);">
+                <button class="btn btn-danger btn-sm" onclick="handleReport('${r.id}','resolved')"><i class="ph ph-trash"></i> Remove Post</button>
+                <button class="btn btn-secondary btn-sm" onclick="handleReport('${r.id}','dismissed')"><i class="ph ph-x"></i> Dismiss</button>
+              </div>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    function setReportFilter(f, btn) {
+      reportFilter = f;
+      document.querySelectorAll('#admin-tab-reports .chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      renderReports();
+    }
+
+    function handleReport(reportId, action) {
+      const report = getReports().find(r => r.id === reportId);
+      if (action === 'resolved' && report?.targetId) deletePost(report.targetId);
+      resolveReport(reportId, action);
+      showToast(action === 'resolved' ? 'Post removed and report resolved' : 'Report dismissed', action === 'resolved' ? 'success' : 'info');
+      renderReports();
+      renderStats();
+    }
+
+    function renderUsersTab() {
+      const search     = document.getElementById('user-search')?.value.toLowerCase() || '';
+      const roleFilter = document.getElementById('user-role-filter')?.value || 'all';
+      let users = getAllUsers().filter(u => u.role !== 'admin');
+      if (search)           users = users.filter(u => u.name.toLowerCase().includes(search));
+      if (roleFilter !== 'all') users = users.filter(u => u.role === roleFilter);
+
+      const el = document.getElementById('users-container');
+      el.innerHTML = users.map(u => {
+        const userPosts = getPosts().filter(p => p.authorId === u.id);
+        return `
+          <div class="user-management-row">
+            <div class="avatar avatar-sm" style="background:${u.bg||'var(--grad-primary)'}">${u.avatar}</div>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:0.875rem;">${u.name}</div>
+              <div style="font-size:0.72rem;color:var(--text-muted);">${u.subject} • Joined ${formatDate(new Date(u.joined).getTime())}</div>
+            </div>
+            <span class="badge badge-${u.role==='teacher'?'teacher':'student'}">${u.role}</span>
+            <div style="text-align:center;min-width:60px;"><div style="font-weight:700;font-size:0.9rem;">${u.points}</div><div style="font-size:0.65rem;color:var(--text-muted);">pts</div></div>
+            <div style="text-align:center;min-width:60px;"><div style="font-weight:700;font-size:0.9rem;">${userPosts.length}</div><div style="font-size:0.65rem;color:var(--text-muted);">posts</div></div>
+            <div style="display:flex;gap:var(--sp-2);">
+              <a href="profile.html?id=${u.id}" class="btn btn-ghost btn-icon btn-sm" title="View Profile"><i class="ph ph-eye"></i></a>
+              <button class="btn btn-ghost btn-icon btn-sm" title="Send Message" onclick="window.location.href='messages.html?to=${u.id}'"><i class="ph ph-chat-circle"></i></button>
+              <button class="btn btn-danger btn-icon btn-sm" title="Block User" onclick="blockUser('${u.id}','${u.name}')"><i class="ph ph-prohibit"></i></button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function blockUser(userId, name) {
+      if (!confirm(`Block ${name}? They will lose access to the platform.`)) return;
+      showToast(`${name} has been blocked`, 'warning');
+    }
+
+    function renderPostsTab() {
+      let posts = getPosts();
+      if (postFilter !== 'all') posts = posts.filter(p => p.type === postFilter);
+      const tbody = document.getElementById('posts-tbody');
+      tbody.innerHTML = posts.map(p => {
+        const author = getUser(p.authorId);
+        return `
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:var(--sp-2);">
+                <div class="avatar avatar-xs" style="background:${author?.bg||'var(--grad-primary)'}">${author?.avatar||'?'}</div>
+                <span>${author?.name||'Unknown'}</span>
+              </div>
+            </td>
+            <td><span class="badge badge-${p.type==='question'?'warning':p.type==='resource'?'success':'primary'}">${p.type}</span></td>
+            <td>${p.subject||'—'}</td>
+            <td>${p.likes.length}</td>
+            <td>${timeAgo(p.timestamp)}</td>
+            <td>
+              <div style="display:flex;gap:var(--sp-1);">
+                <button class="btn btn-ghost btn-icon btn-sm" onclick="showToast('Post preview coming soon!','info')"><i class="ph ph-eye"></i></button>
+                <button class="btn btn-danger btn-icon btn-sm" onclick="adminDeletePost('${p.id}')"><i class="ph ph-trash"></i></button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function setPostFilter(f, btn) {
+      postFilter = f;
+      document.querySelectorAll('#admin-tab-posts .chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      renderPostsTab();
+    }
+
+    function adminDeletePost(postId) {
+      if (!confirm('Delete this post?')) return;
+      deletePost(postId);
+      showToast('Post deleted', 'success');
+      renderPostsTab();
+      renderStats();
+    }
+
+    function renderActivityLog() {
+      const el = document.getElementById('activity-log');
+      const activities = [
+        { icon:'ph-user-plus', color:'var(--success)', text:'<strong>Ananya Singh</strong> joined EduConnect', time: Date.now()-1800000 },
+        { icon:'ph-article', color:'var(--primary-light)', text:'<strong>Priya Sharma</strong> posted a new note on Quadratics', time: Date.now()-3600000 },
+        { icon:'ph-flag', color:'var(--danger)', text:'A post was reported as inappropriate', time: Date.now()-7200000 },
+        { icon:'ph-clipboard-text', color:'var(--accent)', text:'<strong>Rohan Verma</strong> created a quiz on Newton\'s Laws', time: Date.now()-10800000 },
+        { icon:'ph-medal', color:'var(--warning)', text:'<strong>Karan Mehta</strong> earned the "Top Scorer" badge', time: Date.now()-14400000 },
+        { icon:'ph-users-three', color:'var(--success)', text:'New study group "JEE Aspirants 2025" created', time: Date.now()-21600000 },
+        { icon:'ph-chat-circle', color:'var(--accent)', text:'<strong>Dev Patel</strong> answered a doubt in Physics community', time: Date.now()-86400000 },
+      ];
+
+      el.innerHTML = activities.map(a => `
+        <div class="activity-item">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--bg-glass);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="ph ${a.icon}" style="color:${a.color};font-size:0.9rem;"></i>
+          </div>
+          <div style="flex:1;font-size:0.875rem;color:var(--text-secondary);">${a.text}</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);white-space:nowrap;">${timeAgo(a.time)}</div>
+        </div>`).join('');
+    }
+
+    function switchAdminTab(tab, btn) {
+      document.querySelectorAll('.admin-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      ['reports','users','posts','activity'].forEach(t => {
+        const el = document.getElementById(`admin-tab-${t}`);
+        if (el) el.classList.toggle('hidden', t !== tab);
+      });
+    }
+  </script>
+</body>
+</html>

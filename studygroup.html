@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Groups — EduConnect</title>
+  <meta name="description" content="Join or create study groups on EduConnect. Collaborate with peers, share resources, and ace your exams together.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <style>
+    .groups-layout { max-width: 1050px; margin: 0 auto; }
+
+    .groups-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: var(--sp-4);
+      margin-bottom: var(--sp-6);
+    }
+
+    /* Group Detail */
+    .group-detail-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: var(--sp-5);
+      max-width: 1050px;
+    }
+
+    .group-chat-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      height: 600px;
+    }
+
+    .group-chat-header {
+      padding: var(--sp-4) var(--sp-5);
+      border-bottom: 1px solid var(--divider);
+      font-weight: 700;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+    }
+
+    .group-chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--sp-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-3);
+    }
+
+    .group-chat-input {
+      padding: var(--sp-3) var(--sp-4);
+      border-top: 1px solid var(--divider);
+      display: flex;
+      gap: var(--sp-2);
+    }
+
+    .group-info-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-5);
+      backdrop-filter: blur(20px);
+      height: fit-content;
+    }
+
+    @media (max-width: 900px) {
+      .group-detail-layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <!-- Groups List -->
+      <div id="groups-list-view" class="groups-layout">
+        <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <h1>Study Groups</h1>
+            <p>Collaborate, share, and excel together</p>
+          </div>
+          <button class="btn btn-primary" onclick="openCreateGroupModal()"><i class="ph ph-plus"></i> Create Group</button>
+        </div>
+
+        <div style="display:flex;gap:var(--sp-2);margin-bottom:var(--sp-5);">
+          <button class="chip active" onclick="setGFilter('all',this)">All Groups</button>
+          <button class="chip" onclick="setGFilter('mine',this)">My Groups</button>
+        </div>
+
+        <div class="groups-grid" id="groups-grid"></div>
+      </div>
+
+      <!-- Group Detail View -->
+      <div id="group-detail-view" class="hidden">
+        <button class="btn btn-secondary btn-sm" style="margin-bottom:var(--sp-4);" onclick="showGroupsList()"><i class="ph ph-arrow-left"></i> All Groups</button>
+        <div class="group-detail-layout">
+          <!-- Chat -->
+          <div>
+            <div class="group-chat-panel">
+              <div class="group-chat-header">
+                <span id="gd-icon" style="font-size:1.2rem;"></span>
+                <span id="gd-name"></span>
+                <span class="badge badge-primary" id="gd-subject" style="margin-left:auto;"></span>
+              </div>
+              <div class="group-chat-messages" id="gd-messages"></div>
+              <div class="group-chat-input">
+                <input type="text" class="form-input" id="group-chat-input" placeholder="Type a message… (Enter to send)" style="border-radius:var(--r-full);" onkeydown="if(event.key==='Enter')sendGroupChatMsg()">
+                <button class="btn btn-primary btn-icon" onclick="sendGroupChatMsg()"><i class="ph ph-paper-plane-tilt"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Info Panel -->
+          <div class="group-info-panel">
+            <div style="font-weight:700;font-size:0.9rem;margin-bottom:var(--sp-4);">Group Info</div>
+            <p id="gd-desc" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:var(--sp-4);"></p>
+            <div class="divider"></div>
+
+            <div style="font-weight:700;font-size:0.82rem;margin-bottom:var(--sp-3);margin-top:var(--sp-3);">Members</div>
+            <div id="gd-members"></div>
+
+            <div class="divider"></div>
+            <div id="gd-actions" style="margin-top:var(--sp-3);"></div>
+
+            <div style="margin-top:var(--sp-4);">
+              <div style="font-weight:700;font-size:0.82rem;margin-bottom:var(--sp-3);">Shared Resources</div>
+              <div id="gd-resources">
+                <div style="text-align:center;padding:var(--sp-4);color:var(--text-muted);font-size:0.82rem;">
+                  <i class="ph ph-folder-open" style="font-size:1.5rem;display:block;margin-bottom:var(--sp-2);"></i>
+                  No resources shared yet
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm w-full" style="margin-top:var(--sp-2);" onclick="showToast('Resource sharing coming soon!','info')">
+                <i class="ph ph-upload-simple"></i> Share Resource
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Create Group Modal -->
+  <div class="modal-overlay hidden" id="create-group-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="ph ph-users-three"></i> Create Study Group</h3>
+        <button class="modal-close" onclick="closeModal('create-group-modal')"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Group Name</label>
+          <input type="text" class="form-input" id="grp-name" placeholder="e.g. JEE Prep Squad 2025">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subject</label>
+          <select class="form-select" id="grp-subject">
+            <option value="Mathematics">Mathematics</option>
+            <option value="Physics">Physics</option>
+            <option value="Chemistry">Chemistry</option>
+            <option value="Biology">Biology</option>
+            <option value="Science">General Science</option>
+            <option value="Commerce">Commerce</option>
+            <option value="Literature">Literature</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-textarea" id="grp-desc" placeholder="What is this group about?" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Group Icon (emoji)</label>
+          <div style="display:flex;gap:var(--sp-2);flex-wrap:wrap;">
+            ${['📚','🚀','💡','🔬','📐','💻','🎯','⚡','🌟','🦁'].map(e => `<div class="group-icon-option" onclick="selectGroupIcon('${e}')" style="width:40px;height:40px;border-radius:var(--r-md);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.4rem;cursor:pointer;transition:all 0.2s;">${e}</div>`).join('')}
+          </div>
+          <input type="hidden" id="grp-icon" value="📚">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('create-group-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="createGroup()"><i class="ph ph-plus-circle"></i> Create Group</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentUser, activeGroupId = null, gFilter = 'all';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      currentUser = requireAuth();
+      if (!currentUser) return;
+      buildSidebar('studygroup');
+      renderGroupsGrid();
+    });
+
+    function setGFilter(filter, btn) {
+      gFilter = filter;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      renderGroupsGrid();
+    }
+
+    function renderGroupsGrid() {
+      let groups = getGroups();
+      if (gFilter === 'mine') groups = groups.filter(g => g.members.includes(currentUser.id));
+
+      const el = document.getElementById('groups-grid');
+      if (!groups.length) {
+        el.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><i class="ph ph-users-three"></i><h4>No groups found</h4><p>Create one and invite your classmates!</p></div>`;
+        return;
+      }
+
+      el.innerHTML = groups.map(g => {
+        const isMember = g.members.includes(currentUser.id);
+        const memberDetails = g.members.slice(0,3).map(id => getUser(id)).filter(Boolean);
+        return `
+          <div class="group-card animate-fade-in-up" onclick="openGroup('${g.id}')">
+            <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-3);">
+              <div style="font-size:2rem;">${g.icon}</div>
+              <div>
+                <div style="font-weight:700;font-size:0.95rem;">${g.name}</div>
+                <span class="badge badge-primary">${g.subject}</span>
+              </div>
+              ${isMember ? '<span class="badge badge-success" style="margin-left:auto;">✓ Joined</span>' : ''}
+            </div>
+            <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:var(--sp-3);line-height:1.5;">${g.desc}</p>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:var(--sp-2);">
+                <div style="display:flex;">
+                  ${memberDetails.map(u => `<div class="avatar avatar-xs" style="background:${u.bg||'var(--grad-primary)'};margin-left:-6px;border:2px solid var(--bg-elevated);">${u.avatar}</div>`).join('')}
+                  ${g.members.length > 3 ? `<div class="avatar avatar-xs" style="margin-left:-6px;border:2px solid var(--bg-elevated);background:var(--bg-glass);color:var(--text-muted);font-size:0.55rem;">+${g.members.length-3}</div>` : ''}
+                </div>
+                <span style="font-size:0.75rem;color:var(--text-muted);">${g.members.length} member${g.members.length!==1?'s':''}</span>
+              </div>
+              <button class="btn ${isMember?'btn-secondary':'btn-primary'} btn-sm" onclick="event.stopPropagation();toggleGroupMembership('${g.id}')">
+                ${isMember ? 'Open Chat' : '+ Join'}
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function toggleGroupMembership(groupId) {
+      const g = getGroup(groupId);
+      const isMember = g.members.includes(currentUser.id);
+      if (isMember) { openGroup(groupId); }
+      else { joinGroup(groupId, currentUser.id); showToast(`Joined ${g.name}! 🎉`, 'success'); renderGroupsGrid(); openGroup(groupId); }
+    }
+
+    function openGroup(groupId) {
+      activeGroupId = groupId;
+      const g = getGroup(groupId);
+      if (!g) return;
+
+      if (!g.members.includes(currentUser.id)) { joinGroup(groupId, currentUser.id); showToast(`Joined ${g.name}!`, 'success'); }
+
+      document.getElementById('groups-list-view').classList.add('hidden');
+      document.getElementById('group-detail-view').classList.remove('hidden');
+
+      document.getElementById('gd-icon').textContent = g.icon;
+      document.getElementById('gd-name').textContent = g.name;
+      document.getElementById('gd-subject').textContent = g.subject;
+      document.getElementById('gd-desc').textContent = g.desc;
+
+      // Members
+      const membersEl = document.getElementById('gd-members');
+      const memberDetails = g.members.map(id => getUser(id)).filter(Boolean);
+      membersEl.innerHTML = memberDetails.map(u => `
+        <div class="user-suggest-card">
+          <div class="avatar avatar-sm" style="background:${u.bg||'var(--grad-primary)'}">${u.avatar}</div>
+          <div class="user-suggest-info">
+            <div class="user-suggest-name">${u.name} ${u.id === g.admin ? '<i class="ph ph-crown" style="color:var(--warning);" title="Admin"></i>' : ''}</div>
+            <div class="user-suggest-sub">${u.role} • ${u.subject}</div>
+          </div>
+        </div>`).join('');
+
+      // Actions
+      const actionsEl = document.getElementById('gd-actions');
+      actionsEl.innerHTML = g.members.includes(currentUser.id)
+        ? `<button class="btn btn-danger btn-sm w-full" onclick="leaveGroupUI('${groupId}')"><i class="ph ph-sign-out"></i> Leave Group</button>`
+        : `<button class="btn btn-primary btn-sm w-full" onclick="joinGroupUI('${groupId}')"><i class="ph ph-plus"></i> Join Group</button>`;
+
+      // Chat
+      renderGroupChat(g.chat);
+    }
+
+    function renderGroupChat(messages) {
+      const el = document.getElementById('gd-messages');
+      if (!messages.length) {
+        el.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:0.82rem;padding:var(--sp-8)">Start the group discussion! 💬</div>`;
+        return;
+      }
+      el.innerHTML = messages.map(msg => {
+        const sender = getUser(msg.from);
+        const isSent = msg.from === currentUser.id;
+        const avatarStyle = sender?.bg ? `style="background:${sender.bg}"` : '';
+        return `
+          <div class="msg-row ${isSent ? 'sent' : ''}">
+            ${!isSent ? `<div class="avatar avatar-xs" ${avatarStyle}>${sender?.avatar||'?'}</div>` : ''}
+            <div>
+              ${!isSent ? `<div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:3px;">${sender?.name||'User'}</div>` : ''}
+              <div class="msg-bubble ${isSent ? 'sent' : 'received'}">${escapeHtml(msg.text)}</div>
+              <div class="msg-time" style="${isSent?'text-align:right':''}">${timeAgo(msg.ts)}</div>
+            </div>
+          </div>`;
+      }).join('');
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function sendGroupChatMsg() {
+      const input = document.getElementById('group-chat-input');
+      const text = input.value.trim();
+      if (!text || !activeGroupId) return;
+      sendGroupMsg(activeGroupId, currentUser.id, text);
+      input.value = '';
+      const g = getGroup(activeGroupId);
+      renderGroupChat(g.chat);
+    }
+
+    function leaveGroupUI(groupId) {
+      if (!confirm('Leave this group?')) return;
+      DB.update(DB_KEYS.GROUPS, groups => groups.map(g => g.id === groupId ? {...g, members: g.members.filter(id => id !== currentUser.id)} : g));
+      showToast('Left the group', 'info');
+      showGroupsList();
+    }
+
+    function showGroupsList() {
+      document.getElementById('groups-list-view').classList.remove('hidden');
+      document.getElementById('group-detail-view').classList.add('hidden');
+      renderGroupsGrid();
+    }
+
+    function openCreateGroupModal() {
+      openModal('create-group-modal');
+    }
+
+    function selectGroupIcon(icon) {
+      document.getElementById('grp-icon').value = icon;
+      document.querySelectorAll('.group-icon-option').forEach(el => {
+        el.style.border = el.textContent === icon ? '2px solid var(--primary)' : '1px solid var(--border)';
+        el.style.background = el.textContent === icon ? 'rgba(124,58,237,0.1)' : '';
+      });
+    }
+
+    function createGroup() {
+      const name    = document.getElementById('grp-name').value.trim();
+      const subject = document.getElementById('grp-subject').value;
+      const desc    = document.getElementById('grp-desc').value.trim();
+      const icon    = document.getElementById('grp-icon').value;
+      if (!name) { showToast('Enter a group name', 'warning'); return; }
+      const group = { id: genId('g'), name, subject, desc, icon, admin: currentUser.id, members: [currentUser.id], resources: [], chat: [] };
+      DB.update(DB_KEYS.GROUPS, groups => [...groups, group]);
+      closeModal('create-group-modal');
+      showToast(`${name} created! 🎉`, 'success');
+      renderGroupsGrid();
+      openGroup(group.id);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduConnect — Learn Together, Grow Together</title>
+  <meta name="description" content="EduConnect is an educational social media platform for students and teachers to collaborate, share knowledge, and achieve academic excellence together.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <style>
+    body { overflow-x: hidden; }
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--sp-5) var(--sp-8);
+      position: relative;
+      z-index: 10;
+    }
+
+    .hero-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.5rem;
+      color: var(--text-primary);
+    }
+
+    .hero-logo .logo-icon {
+      width: 44px; height: 44px;
+      background: var(--grad-primary);
+      border-radius: var(--r-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: var(--shadow-glow);
+    }
+
+    .hero-nav-actions { display: flex; gap: var(--sp-3); align-items: center; }
+
+    /* ── Hero Body ── */
+    .hero-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-10) var(--sp-8);
+      gap: var(--sp-16);
+      position: relative;
+      z-index: 5;
+    }
+
+    .hero-content { max-width: 560px; }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      background: rgba(124,58,237,0.12);
+      border: 1px solid rgba(124,58,237,0.3);
+      border-radius: var(--r-full);
+      padding: var(--sp-1) var(--sp-4);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--primary-light);
+      margin-bottom: var(--sp-5);
+      animation: fadeInDown 0.6s ease;
+    }
+
+    .hero-title {
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: var(--sp-5);
+      animation: fadeInUp 0.6s ease 0.1s both;
+    }
+
+    .hero-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: var(--sp-8);
+      animation: fadeInUp 0.6s ease 0.2s both;
+    }
+
+    .hero-ctas {
+      display: flex;
+      gap: var(--sp-4);
+      flex-wrap: wrap;
+      animation: fadeInUp 0.6s ease 0.3s both;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: var(--sp-8);
+      margin-top: var(--sp-10);
+      animation: fadeInUp 0.6s ease 0.4s both;
+    }
+
+    .hero-stat-item { text-align: left; }
+    .hero-stat-num {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 900;
+      background: var(--grad-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-stat-lbl { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
+
+    /* ── Auth Panel ── */
+    .auth-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-2xl);
+      padding: var(--sp-8);
+      width: 420px;
+      backdrop-filter: blur(30px);
+      box-shadow: var(--shadow-xl);
+      animation: scaleIn 0.5s ease 0.2s both;
+      position: relative;
+      z-index: 10;
+    }
+
+    .auth-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--r-2xl);
+      padding: 1px;
+      background: var(--grad-primary);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.5;
+    }
+
+    .auth-tabs { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-6); background: var(--bg-glass); border-radius: var(--r-full); padding: 4px; }
+    .auth-tab {
+      flex: 1; text-align: center; padding: var(--sp-2) var(--sp-4);
+      border-radius: var(--r-full); font-size: 0.875rem; font-weight: 600;
+      cursor: pointer; transition: all var(--t-fast); color: var(--text-muted);
+      border: none; background: none; font-family: var(--font-body);
+    }
+    .auth-tab.active { background: var(--grad-primary); color: white; box-shadow: 0 2px 12px var(--primary-glow); }
+
+    .auth-form { display: none; }
+    .auth-form.active { display: flex; flex-direction: column; gap: var(--sp-4); animation: fadeInUp 0.3s ease; }
+
+    .role-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-3);
+    }
+
+    .role-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--sp-2);
+      padding: var(--sp-4);
+      border: 2px solid var(--border);
+      border-radius: var(--r-lg);
+      cursor: pointer;
+      transition: all var(--t-fast);
+      text-align: center;
+    }
+
+    .role-option:hover { border-color: var(--primary); background: rgba(124,58,237,0.06); }
+    .role-option.selected { border-color: var(--primary); background: rgba(124,58,237,0.12); }
+    .role-icon { font-size: 2rem; }
+    .role-label { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
+    .role-sublabel { font-size: 0.7rem; color: var(--text-muted); }
+
+    .divider-text {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    .divider-text::before, .divider-text::after { content: ''; flex: 1; height: 1px; background: var(--divider); }
+
+    /* ── Features Section ── */
+    .features-section {
+      padding: var(--sp-20) var(--sp-8);
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--sp-5);
+      margin-top: var(--sp-10);
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-6);
+      backdrop-filter: blur(20px);
+      transition: all var(--t-normal);
+    }
+
+    .feature-card:hover {
+      border-color: rgba(124,58,237,0.3);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .feature-icon {
+      width: 52px; height: 52px;
+      border-radius: var(--r-lg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: var(--sp-4);
+    }
+
+    .feature-card h4 { font-size: 1rem; margin-bottom: var(--sp-2); }
+    .feature-card p  { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; }
+
+    /* ── Floating Cards ── */
+    .hero-visual {
+      position: relative;
+      width: 380px;
+      height: 420px;
+      flex-shrink: 0;
+    }
+
+    .floating-card {
+      position: absolute;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      padding: var(--sp-4);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-lg);
+      animation: fadeInRight 0.6s ease both;
+    }
+
+    .fc-1 { top: 0; left: 0; width: 220px; animation-delay: 0.3s; }
+    .fc-2 { top: 120px; right: 0; width: 190px; animation-delay: 0.5s; }
+    .fc-3 { bottom: 20px; left: 30px; width: 240px; animation-delay: 0.7s; }
+
+    .fc-mini-avatar { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; color: white; }
+
+    @media (max-width: 1024px) {
+      .hero-body { flex-direction: column; gap: var(--sp-8); padding: var(--sp-6) var(--sp-4); }
+      .hero-visual { display: none; }
+      .auth-panel { width: 100%; max-width: 420px; }
+    }
+
+    @media (max-width: 600px) {
+      .hero-nav { padding: var(--sp-4); }
+      .hero-ctas { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <!-- Nav -->
+    <nav class="hero-nav">
+      <div class="hero-logo">
+        <div class="logo-icon">🎓</div>
+        EduConnect
+      </div>
+      <div class="hero-nav-actions">
+        <button class="btn btn-secondary btn-sm" onclick="scrollToFeatures()">Features</button>
+        <button class="btn btn-primary btn-sm" onclick="switchTab('login')">Get Started</button>
+      </div>
+    </nav>
+
+    <!-- Body -->
+    <div class="hero-body">
+      <!-- Left: Text -->
+      <div class="hero-content">
+        <div class="hero-eyebrow">
+          <i class="ph ph-graduation-cap"></i>
+          Education meets Social Media
+        </div>
+        <h1 class="hero-title">
+          Learn Smarter.<br>
+          <span class="grad-text">Connect Better.</span><br>
+          Achieve More.
+        </h1>
+        <p class="hero-subtitle">
+          EduConnect brings students and teachers together in one collaborative platform. Share notes, join communities, take quizzes, and track your academic journey — all in one place.
+        </p>
+        <div class="hero-ctas">
+          <button class="btn btn-primary btn-xl" onclick="switchTab('register')">
+            <i class="ph ph-rocket-launch"></i>
+            Join EduConnect Free
+          </button>
+          <button class="btn btn-secondary btn-xl" onclick="quickDemo()">
+            <i class="ph ph-play-circle"></i>
+            Quick Demo
+          </button>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat-item">
+            <div class="hero-stat-num">10K+</div>
+            <div class="hero-stat-lbl">Students</div>
+          </div>
+          <div class="hero-stat-item">
+            <div class="hero-stat-num">500+</div>
+            <div class="hero-stat-lbl">Teachers</div>
+          </div>
+          <div class="hero-stat-item">
+            <div class="hero-stat-num">50K+</div>
+            <div class="hero-stat-lbl">Resources Shared</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Floating Preview Cards -->
+      <div class="hero-visual">
+        <div class="floating-card fc-1" style="animation: fadeInRight 0.6s ease 0.3s both, float 4s ease-in-out 1s infinite;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <div class="fc-mini-avatar" style="background:linear-gradient(135deg,#7c3aed,#06b6d4)">PS</div>
+            <div>
+              <div style="font-size:0.75rem;font-weight:600;color:var(--text-primary);">Priya Sharma</div>
+              <div style="font-size:0.65rem;color:var(--text-muted);">Teacher • Math</div>
+            </div>
+          </div>
+          <div style="font-size:0.78rem;color:var(--text-secondary);line-height:1.5;">📐 New post: Quadratic Formula explained with examples!</div>
+          <div style="display:flex;gap:12px;margin-top:8px;">
+            <span style="font-size:0.7rem;color:var(--danger-light);">❤️ 24 likes</span>
+            <span style="font-size:0.7rem;color:var(--text-muted);">💬 8 comments</span>
+          </div>
+        </div>
+
+        <div class="floating-card fc-2" style="animation: fadeInRight 0.6s ease 0.5s both, float 3.5s ease-in-out 1.5s infinite;">
+          <div style="font-size:0.78rem;font-weight:700;color:var(--text-primary);margin-bottom:6px;">🏆 Leaderboard</div>
+          <div style="font-size:0.72rem;color:var(--text-secondary);">🥇 Karan — 4100 pts</div>
+          <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:3px;">🥈 Priya — 3900 pts</div>
+          <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:3px;">🥉 Meera — 3200 pts</div>
+        </div>
+
+        <div class="floating-card fc-3" style="animation: fadeInRight 0.6s ease 0.7s both, float 5s ease-in-out 2s infinite;">
+          <div style="font-size:0.78rem;font-weight:700;color:var(--text-primary);margin-bottom:8px;">📊 Performance</div>
+          <div style="margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.68rem;margin-bottom:3px;"><span style="color:var(--text-muted)">Physics</span><span style="color:var(--text-primary);font-weight:600">85%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:85%"></div></div>
+          </div>
+          <div style="margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.68rem;margin-bottom:3px;"><span style="color:var(--text-muted)">Math</span><span style="color:var(--text-primary);font-weight:600">72%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:72%;background:var(--grad-warning)"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:0.68rem;margin-bottom:3px;"><span style="color:var(--text-muted)">Chemistry</span><span style="color:var(--text-primary);font-weight:600">63%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:63%;background:var(--grad-danger)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auth Panel -->
+      <div class="auth-panel" id="auth-panel">
+        <div style="text-align:center;margin-bottom:var(--sp-5);">
+          <div style="font-family:var(--font-display);font-size:1.3rem;font-weight:800;margin-bottom:4px;">Welcome to EduConnect</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);">Your academic journey starts here</div>
+        </div>
+
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Login</button>
+          <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Register</button>
+        </div>
+
+        <!-- Login Form -->
+        <form class="auth-form active" id="form-login" onsubmit="handleLogin(event)">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label"><i class="ph ph-envelope"></i> Email</label>
+            <input type="email" id="login-email" class="form-input" placeholder="Enter your email" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label"><i class="ph ph-lock"></i> Password</label>
+            <div class="input-with-icon">
+              <input type="password" id="login-password" class="form-input" placeholder="Enter your password" required>
+            </div>
+          </div>
+          <div id="login-error" style="color:var(--danger);font-size:0.8rem;display:none;"></div>
+          <button type="submit" class="btn btn-primary w-full btn-lg">
+            <i class="ph ph-sign-in"></i> Login to EduConnect
+          </button>
+          <div class="divider-text">or try a demo account</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="demoLogin('student')">👤 Student Demo</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="demoLogin('teacher')">👨‍🏫 Teacher Demo</button>
+          </div>
+        </form>
+
+        <!-- Register Form -->
+        <form class="auth-form" id="form-register" onsubmit="handleRegister(event)">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">I am a…</label>
+            <div class="role-selector">
+              <div class="role-option selected" id="role-student" onclick="selectRole('student')">
+                <div class="role-icon">👤</div>
+                <div class="role-label">Student</div>
+                <div class="role-sublabel">I want to learn</div>
+              </div>
+              <div class="role-option" id="role-teacher" onclick="selectRole('teacher')">
+                <div class="role-icon">👨‍🏫</div>
+                <div class="role-label">Teacher</div>
+                <div class="role-sublabel">I want to teach</div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label"><i class="ph ph-user"></i> Full Name</label>
+            <input type="text" id="reg-name" class="form-input" placeholder="Your full name" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label"><i class="ph ph-envelope"></i> Email</label>
+            <input type="email" id="reg-email" class="form-input" placeholder="Your email address" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label"><i class="ph ph-book-open"></i> Subject / Class</label>
+            <select id="reg-subject" class="form-select" required>
+              <option value="">Select subject / class</option>
+              <option value="Mathematics">Mathematics</option>
+              <option value="Physics">Physics</option>
+              <option value="Chemistry">Chemistry</option>
+              <option value="Biology">Biology</option>
+              <option value="Literature">Literature</option>
+              <option value="History">History</option>
+              <option value="Computer Science">Computer Science</option>
+              <option value="Commerce">Commerce</option>
+              <option value="Science">General Science</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label"><i class="ph ph-lock"></i> Password</label>
+            <input type="password" id="reg-password" class="form-input" placeholder="Create a password (min 6 chars)" required minlength="6">
+          </div>
+          <div id="reg-error" style="color:var(--danger);font-size:0.8rem;display:none;"></div>
+          <button type="submit" class="btn btn-primary w-full btn-lg">
+            <i class="ph ph-rocket-launch"></i> Create My Account
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features-section" id="features">
+    <div style="text-align:center;">
+      <div class="hero-eyebrow" style="display:inline-flex;margin-bottom:var(--sp-4);">✨ Everything you need</div>
+      <h2 style="font-size:2rem;margin-bottom:var(--sp-4);">Built for <span class="grad-text">Learners & Teachers</span></h2>
+      <p style="max-width:560px;margin:0 auto;color:var(--text-muted);">A complete educational ecosystem combining the best of social media with powerful academic tools.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(124,58,237,0.15);"><span>📰</span></div>
+        <h4>Educational Feed</h4>
+        <p>Share notes, announcements, resources, and questions. Like, comment, and bookmark posts from your community.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(6,182,212,0.15);"><span>📚</span></div>
+        <h4>Subject Communities</h4>
+        <p>Join communities for your subjects. Explore Maths, Physics, Literature, and more with fellow learners.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(16,185,129,0.15);"><span>🧑‍🏫</span></div>
+        <h4>Quizzes & Assignments</h4>
+        <p>Teachers create quizzes with timers. Students take them, get instant feedback, and track scores.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(245,158,11,0.15);"><span>📊</span></div>
+        <h4>Performance Dashboard</h4>
+        <p>Visual charts for subject-wise marks, strengths, weaknesses, and AI-powered improvement recommendations.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(239,68,68,0.15);"><span>🏆</span></div>
+        <h4>Leaderboard & Badges</h4>
+        <p>Earn points, unlock achievements, and compete on the educational leaderboard. Stay motivated every day!</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(139,92,246,0.15);"><span>👥</span></div>
+        <h4>Study Groups</h4>
+        <p>Create or join study groups with friends. Chat, share resources, and ace exams together.</p>
+      </div>
+    </div>
+  </section>
+
+  <script src="js/data.js"></script>
+  <script>
+    let selectedRole = 'student';
+
+    // Check if already logged in
+    window.addEventListener('DOMContentLoaded', () => {
+      const user = getCurrentUser();
+      if (user) window.location.href = 'feed.html';
+    });
+
+    function switchTab(tab) {
+      document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+      document.getElementById('form-login').classList.toggle('active', tab === 'login');
+      document.getElementById('form-register').classList.toggle('active', tab === 'register');
+      document.getElementById('auth-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function selectRole(role) {
+      selectedRole = role;
+      document.getElementById('role-student').classList.toggle('selected', role === 'student');
+      document.getElementById('role-teacher').classList.toggle('selected', role === 'teacher');
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim().toLowerCase();
+      const password = document.getElementById('login-password').value;
+      const errEl = document.getElementById('login-error');
+
+      // Simple email-based lookup (demo: any password works)
+      const users = DB.get(DB_KEYS.USERS) || [];
+      // Match by email stored in user or by demo
+      const demoMap = {
+        'priya@edu.com': 'u1', 'rohan@edu.com': 'u2', 'ananya@edu.com': 'u3',
+        'dev@edu.com': 'u4', 'meera@edu.com': 'u5', 'karan@edu.com': 'u6',
+        'admin@edu.com': 'admin'
+      };
+      const userId = demoMap[email] || users.find(u => u.email === email)?.id;
+
+      if (!userId || password.length < 1) {
+        errEl.textContent = 'Invalid email or password. Try a demo account!';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      errEl.style.display = 'none';
+      loginUser(userId);
+      const user = getCurrentUser();
+      showSuccessAndRedirect(user);
+    }
+
+    function handleRegister(e) {
+      e.preventDefault();
+      const name    = document.getElementById('reg-name').value.trim();
+      const email   = document.getElementById('reg-email').value.trim().toLowerCase();
+      const subject = document.getElementById('reg-subject').value;
+      const password= document.getElementById('reg-password').value;
+      const errEl   = document.getElementById('reg-error');
+
+      if (!name || !email || !subject || !password) {
+        errEl.textContent = 'Please fill all fields.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      const users = DB.get(DB_KEYS.USERS) || [];
+      if (users.find(u => u.email === email)) {
+        errEl.textContent = 'Email already registered. Please login.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      const initials = name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+      const colors = [
+        'linear-gradient(135deg,#7c3aed,#06b6d4)',
+        'linear-gradient(135deg,#10b981,#06b6d4)',
+        'linear-gradient(135deg,#f59e0b,#ef4444)',
+        'linear-gradient(135deg,#7c3aed,#f59e0b)',
+        'linear-gradient(135deg,#ef4444,#7c3aed)',
+      ];
+      const newUser = {
+        id: genId('u'), name, email, role: selectedRole, subject,
+        avatar: initials, bio: `${selectedRole.charAt(0).toUpperCase()+selectedRole.slice(1)} at EduConnect`,
+        followers: [], following: [], points: 50, badges: ['first-post'],
+        streak: 0, joined: new Date().toISOString().slice(0,10), posts: 0,
+        bg: colors[Math.floor(Math.random()*colors.length)]
+      };
+
+      users.push(newUser);
+      DB.set(DB_KEYS.USERS, users);
+      loginUser(newUser.id);
+      showSuccessAndRedirect(newUser);
+    }
+
+    function showSuccessAndRedirect(user) {
+      document.getElementById('auth-panel').innerHTML = `
+        <div style="text-align:center;padding:var(--sp-8);">
+          <div style="font-size:3rem;margin-bottom:var(--sp-4);animation:float 2s ease-in-out infinite">🎓</div>
+          <h3 style="margin-bottom:var(--sp-2);">Welcome, ${user.name.split(' ')[0]}!</h3>
+          <p style="color:var(--text-muted);font-size:0.9rem;">Taking you to your feed…</p>
+          <div class="progress-bar" style="margin-top:var(--sp-6);"><div class="progress-fill" style="width:100%;animation:none;"></div></div>
+        </div>`;
+      setTimeout(() => window.location.href = 'feed.html', 1200);
+    }
+
+    function demoLogin(role) {
+      const demos = { student: 'u3', teacher: 'u1' };
+      loginUser(demos[role]);
+      showSuccessAndRedirect(getCurrentUser());
+    }
+
+    function quickDemo() { demoLogin('student'); }
+
+    function scrollToFeatures() {
+      document.getElementById('features').scrollIntoView({ behavior:'smooth' });
+    }
+
+    // genId helper available from data.js
+  </script>
+</body>
+</html>

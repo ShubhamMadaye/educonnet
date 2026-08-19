@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications — EduConnect</title>
+  <meta name="description" content="Stay updated with your EduConnect notifications. See likes, comments, follows, quiz results, and badges.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <style>
+    .notif-layout { max-width: 720px; margin: 0 auto; }
+
+    .notif-group-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: var(--sp-4) 0 var(--sp-2);
+    }
+
+    .notif-list {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+    }
+
+    .notif-item { border-bottom: 1px solid var(--divider); }
+    .notif-item:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="notif-layout">
+        <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <h1>Notifications</h1>
+            <p id="notif-count-text">Your recent activity</p>
+          </div>
+          <div style="display:flex;gap:var(--sp-2);">
+            <div style="display:flex;gap:var(--sp-2);">
+              <button class="chip active" onclick="setNotifFilter('all',this)">All</button>
+              <button class="chip" onclick="setNotifFilter('unread',this)">Unread</button>
+              <button class="chip" onclick="setNotifFilter('like',this)">❤️ Likes</button>
+              <button class="chip" onclick="setNotifFilter('quiz',this)">📝 Quizzes</button>
+              <button class="chip" onclick="setNotifFilter('badge',this)">🏆 Badges</button>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="markAllRead()"><i class="ph ph-checks"></i> Mark all read</button>
+          </div>
+        </div>
+
+        <div id="notif-container"></div>
+
+        <div class="empty-state hidden" id="notif-empty">
+          <i class="ph ph-bell-slash"></i>
+          <h4>All caught up!</h4>
+          <p>No notifications matching this filter</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentUser, notifFilter = 'all';
+
+    const NOTIF_ICONS = {
+      like:    { icon:'ph-heart-fill', bg:'rgba(244,63,94,0.15)', color:'#f43f5e' },
+      comment: { icon:'ph-chat-circle-fill', bg:'rgba(6,182,212,0.15)', color:'#06b6d4' },
+      follow:  { icon:'ph-user-plus-fill', bg:'rgba(124,58,237,0.15)', color:'#9f67ff' },
+      badge:   { icon:'ph-medal-fill', bg:'rgba(245,158,11,0.15)', color:'#f59e0b' },
+      quiz:    { icon:'ph-clipboard-text-fill', bg:'rgba(16,185,129,0.15)', color:'#10b981' },
+      share:   { icon:'ph-share-network-fill', bg:'rgba(6,182,212,0.15)', color:'#06b6d4' },
+      default: { icon:'ph-bell-fill', bg:'rgba(124,58,237,0.15)', color:'#9f67ff' },
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      currentUser = requireAuth();
+      if (!currentUser) return;
+      buildSidebar('notifications');
+      markNotifsRead(currentUser.id);
+      renderNotifs();
+    });
+
+    function setNotifFilter(f, btn) {
+      notifFilter = f;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      renderNotifs();
+    }
+
+    function renderNotifs() {
+      let notifs = getNotifs(currentUser.id);
+      if (notifFilter !== 'all' && notifFilter !== 'unread') {
+        notifs = notifs.filter(n => n.type === notifFilter);
+      } else if (notifFilter === 'unread') {
+        notifs = notifs.filter(n => !n.read);
+      }
+
+      const unread = notifs.filter(n => !n.read).length;
+      document.getElementById('notif-count-text').textContent = `${notifs.length} notification${notifs.length !== 1 ? 's' : ''} ${unread > 0 ? `• ${unread} unread` : ''}`;
+
+      const container = document.getElementById('notif-container');
+      const empty = document.getElementById('notif-empty');
+
+      if (!notifs.length) {
+        container.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      // Group by Today / Earlier
+      const today = new Date().toDateString();
+      const todayNotifs    = notifs.filter(n => new Date(n.ts).toDateString() === today);
+      const earlierNotifs  = notifs.filter(n => new Date(n.ts).toDateString() !== today);
+
+      let html = '';
+      if (todayNotifs.length) {
+        html += `<div class="notif-group-label">Today</div><div class="notif-list">${todayNotifs.map(n => buildNotifItem(n)).join('')}</div>`;
+      }
+      if (earlierNotifs.length) {
+        html += `<div class="notif-group-label">Earlier</div><div class="notif-list">${earlierNotifs.map(n => buildNotifItem(n)).join('')}</div>`;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function buildNotifItem(n) {
+      const from  = n.fromId ? getUser(n.fromId) : null;
+      const cfg   = NOTIF_ICONS[n.type] || NOTIF_ICONS.default;
+      const avatarStyle = from?.bg ? `style="background:${from.bg}"` : '';
+
+      let link = '#';
+      if (n.postId)  link = `feed.html#post-${n.postId}`;
+      if (n.type === 'follow' && n.fromId) link = `profile.html?id=${n.fromId}`;
+      if (n.type === 'quiz')   link = 'quizzes.html';
+      if (n.type === 'badge')  link = 'leaderboard.html';
+
+      return `
+        <div class="notif-item ${n.read ? '' : 'unread'}" onclick="window.location.href='${link}'">
+          <div class="notif-item" style="border:none;">
+            <div class="notif-icon" style="background:${cfg.bg};">
+              <i class="ph ${cfg.icon}" style="color:${cfg.color};"></i>
+            </div>
+            <div style="flex:1;">
+              ${from ? `<div style="display:flex;align-items:center;gap:var(--sp-2);margin-bottom:4px;"><div class="avatar avatar-xs" ${avatarStyle}>${from.avatar}</div><span style="font-size:0.78rem;font-weight:600;color:var(--text-primary);">${from.name}</span></div>` : ''}
+              <div class="notif-text">${n.text}</div>
+              <div class="notif-time"><i class="ph ph-clock"></i> ${timeAgo(n.ts)}</div>
+            </div>
+            ${!n.read ? '<div class="notif-unread-dot"></div>' : ''}
+          </div>
+        </div>`;
+    }
+
+    function markAllRead() {
+      markNotifsRead(currentUser.id);
+      showToast('All notifications marked as read', 'success');
+      renderNotifs();
+    }
+  </script>
+</body>
+</html>

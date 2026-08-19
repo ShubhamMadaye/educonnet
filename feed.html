@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feed — EduConnect</title>
+  <meta name="description" content="Your educational social feed — posts, notes, resources, and discussions from your learning community.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <style>
+    .feed-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: var(--sp-6);
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .feed-filters {
+      display: flex;
+      gap: var(--sp-2);
+      margin-bottom: var(--sp-4);
+      flex-wrap: wrap;
+    }
+
+    .post-type-selector {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--sp-2);
+      padding: var(--sp-3);
+      background: var(--bg-glass);
+      border-radius: var(--r-lg);
+      border: 1px solid var(--border);
+    }
+
+    .type-btn {
+      padding: var(--sp-2);
+      text-align: center;
+      border-radius: var(--r-md);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: none;
+      color: var(--text-muted);
+      transition: all var(--t-fast);
+      font-family: var(--font-body);
+    }
+
+    .type-btn:hover, .type-btn.active {
+      background: rgba(124,58,237,0.12);
+      border-color: var(--primary);
+      color: var(--primary-light);
+    }
+
+    .composer-expanded {
+      display: none;
+      flex-direction: column;
+      gap: var(--sp-3);
+    }
+
+    .composer-expanded.show { display: flex; }
+
+    @media (max-width: 900px) {
+      .feed-layout { grid-template-columns: 1fr; }
+      .right-sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="feed-layout">
+        <!-- Main Feed -->
+        <div>
+          <!-- Page Header -->
+          <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <h1 style="font-size:1.5rem;">Educational Feed</h1>
+              <p>Discover knowledge from your learning community</p>
+            </div>
+            <div class="search-bar" style="width:220px;">
+              <i class="ph ph-magnifying-glass"></i>
+              <input type="text" placeholder="Search posts…" id="search-input" oninput="filterPosts()">
+            </div>
+          </div>
+
+          <!-- Feed Filters -->
+          <div class="feed-filters" id="feed-filters">
+            <button class="chip active" data-filter="all" onclick="setFilter('all',this)">🌐 All Posts</button>
+            <button class="chip" data-filter="following" onclick="setFilter('following',this)">👥 Following</button>
+            <button class="chip" data-filter="note" onclick="setFilter('note',this)">📝 Notes</button>
+            <button class="chip" data-filter="question" onclick="setFilter('question',this)">❓ Questions</button>
+            <button class="chip" data-filter="resource" onclick="setFilter('resource',this)">📄 Resources</button>
+            <button class="chip" data-filter="announcement" onclick="setFilter('announcement',this)">📢 Announcements</button>
+          </div>
+
+          <!-- Stories -->
+          <div class="stories-row" id="stories-row"></div>
+
+          <!-- Composer -->
+          <div class="composer" id="composer">
+            <div class="composer-top">
+              <div id="composer-avatar"></div>
+              <textarea class="composer-input" id="post-text" placeholder="Share something educational… 📚" rows="2" onclick="expandComposer()" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+            </div>
+            <div class="composer-expanded" id="composer-expanded">
+              <div style="padding: 0 var(--sp-5);">
+                <div class="post-type-selector" id="post-type-selector">
+                  <button class="type-btn active" data-type="post" onclick="selectPostType('post',this)">💬 Post</button>
+                  <button class="type-btn" data-type="note" onclick="selectPostType('note',this)">📝 Note</button>
+                  <button class="type-btn" data-type="question" onclick="selectPostType('question',this)">❓ Question</button>
+                  <button class="type-btn" data-type="resource" onclick="selectPostType('resource',this)">📄 Resource</button>
+                  <button class="type-btn" data-type="announcement" id="announcement-btn" onclick="selectPostType('announcement',this)">📢 Announce</button>
+                </div>
+                <div style="margin-top:var(--sp-3);">
+                  <select class="form-select" id="post-subject" style="width:100%;">
+                    <option value="">Select subject (optional)</option>
+                    <option value="Mathematics">Mathematics</option>
+                    <option value="Physics">Physics</option>
+                    <option value="Chemistry">Chemistry</option>
+                    <option value="Biology">Biology</option>
+                    <option value="Literature">Literature</option>
+                    <option value="History">History</option>
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Commerce">Commerce</option>
+                  </select>
+                </div>
+                <div style="margin-top:var(--sp-3);">
+                  <input type="text" class="form-input" id="post-tags" placeholder="Add tags: #Maths #Physics (comma separated)">
+                </div>
+              </div>
+            </div>
+            <div class="composer-actions">
+              <div class="composer-tools">
+                <button class="composer-tool-btn" title="Add Image" onclick="showToast('Image upload coming soon!','info')"><i class="ph ph-image"></i></button>
+                <button class="composer-tool-btn" title="Attach PDF" onclick="showToast('PDF sharing coming soon!','info')"><i class="ph ph-file-pdf"></i></button>
+                <button class="composer-tool-btn" title="Add Link" onclick="showToast('Link sharing coming soon!','info')"><i class="ph ph-link"></i></button>
+              </div>
+              <div style="display:flex;gap:var(--sp-2);">
+                <button class="btn btn-secondary btn-sm" onclick="collapseComposer()">Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="submitPost()"><i class="ph ph-paper-plane-tilt"></i> Post</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feed -->
+          <div id="feed-container" style="display:flex;flex-direction:column;gap:var(--sp-4);"></div>
+
+          <!-- Loading indicator -->
+          <div id="feed-empty" class="empty-state hidden">
+            <i class="ph ph-newspaper"></i>
+            <h4>No posts found</h4>
+            <p>Try a different filter or be the first to post something!</p>
+          </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <aside class="right-sidebar">
+          <!-- Trending -->
+          <div class="sidebar-widget">
+            <div class="widget-title"><i class="ph ph-trend-up"></i> Trending Topics</div>
+            <div id="trending-list"></div>
+          </div>
+
+          <!-- Suggested -->
+          <div class="sidebar-widget">
+            <div class="widget-title"><i class="ph ph-user-plus"></i> Suggested Follows</div>
+            <div id="suggested-list"></div>
+          </div>
+
+          <!-- Quick Links -->
+          <div class="sidebar-widget">
+            <div class="widget-title"><i class="ph ph-lightning"></i> Quick Actions</div>
+            <div style="display:flex;flex-direction:column;gap:var(--sp-2);">
+              <a href="quizzes.html" class="btn btn-secondary btn-sm w-full" style="justify-content:flex-start;gap:var(--sp-2);"><i class="ph ph-clipboard-text"></i> View Quizzes</a>
+              <a href="community.html" class="btn btn-secondary btn-sm w-full" style="justify-content:flex-start;gap:var(--sp-2);"><i class="ph ph-users-three"></i> Communities</a>
+              <a href="leaderboard.html" class="btn btn-secondary btn-sm w-full" style="justify-content:flex-start;gap:var(--sp-2);"><i class="ph ph-trophy"></i> Leaderboard</a>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <!-- Report Modal -->
+  <div class="modal-overlay hidden" id="report-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="ph ph-flag" style="color:var(--danger)"></i> Report Content</h3>
+        <button class="modal-close" onclick="closeModal('report-modal')"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Reason for reporting</label>
+          <select class="form-select" id="report-reason">
+            <option value="Inappropriate content">Inappropriate content</option>
+            <option value="Spam or misleading">Spam or misleading</option>
+            <option value="Harassment">Harassment</option>
+            <option value="Off-topic">Off-topic / Not educational</option>
+          </select>
+        </div>
+        <p style="font-size:0.82rem;color:var(--text-muted);">Our admin team will review this report within 24 hours. Thank you for keeping EduConnect safe!</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('report-modal')">Cancel</button>
+        <button class="btn btn-danger" onclick="submitReport()"><i class="ph ph-flag"></i> Submit Report</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentFilter = 'all';
+    let selectedType = 'post';
+    let reportingPostId = null;
+    let currentUser;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      currentUser = requireAuth();
+      if (!currentUser) return;
+      buildSidebar('feed');
+      buildStories();
+      buildComposerAvatar();
+      renderFeed();
+      buildTrending();
+      buildSuggested();
+      // Hide announcement for students
+      if (currentUser.role === 'student') {
+        const ab = document.getElementById('announcement-btn');
+        if (ab) ab.style.display = 'none';
+      }
+    });
+
+    function buildComposerAvatar() {
+      const el = document.getElementById('composer-avatar');
+      if (el) el.innerHTML = avatarHTML(currentUser, 'md');
+    }
+
+    function buildStories() {
+      const users = getAllUsers().filter(u => u.id !== currentUser.id && u.role !== 'admin').slice(0,8);
+      const row = document.getElementById('stories-row');
+      if (!row) return;
+      row.innerHTML = users.map(u => `
+        <div class="story-card" onclick="window.location.href='profile.html?id=${u.id}'">
+          <div class="story-ring">
+            <div class="avatar" style="width:100%;height:100%;background:${u.bg || 'var(--grad-primary)'}">${u.avatar}</div>
+          </div>
+          <div class="story-name">${u.name.split(' ')[0]}</div>
+        </div>`).join('');
+    }
+
+    function renderFeed() {
+      const container = document.getElementById('feed-container');
+      const empty     = document.getElementById('feed-empty');
+      const search    = (document.getElementById('search-input')?.value || '').toLowerCase();
+      let posts = getPosts();
+
+      if (currentFilter === 'following') {
+        posts = posts.filter(p => currentUser.following.includes(p.authorId) || p.authorId === currentUser.id);
+      } else if (['note','question','resource','announcement'].includes(currentFilter)) {
+        posts = posts.filter(p => p.type === currentFilter);
+      }
+
+      if (search) {
+        posts = posts.filter(p => p.text.toLowerCase().includes(search) || p.tags.some(t => t.toLowerCase().includes(search)));
+      }
+
+      if (posts.length === 0) {
+        container.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      container.innerHTML = posts.map(p => buildPostCard(p, currentUser)).join('');
+    }
+
+    function filterPosts() { renderFeed(); }
+
+    function setFilter(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.feed-filters .chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      renderFeed();
+    }
+
+    function expandComposer() {
+      document.getElementById('composer-expanded').classList.add('show');
+    }
+
+    function collapseComposer() {
+      document.getElementById('composer-expanded').classList.remove('show');
+      document.getElementById('post-text').value = '';
+      document.getElementById('post-text').style.height = 'auto';
+    }
+
+    function selectPostType(type, btn) {
+      selectedType = type;
+      document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    function submitPost() {
+      const text = document.getElementById('post-text').value.trim();
+      if (!text) { showToast('Please write something first!', 'warning'); return; }
+
+      const rawTags = document.getElementById('post-tags').value;
+      const tags = rawTags.split(',').map(t => t.trim()).filter(t => t).map(t => t.startsWith('#') ? t : '#' + t);
+      const subject = document.getElementById('post-subject').value || currentUser.subject;
+
+      const post = {
+        id: genId('p'), authorId: currentUser.id, type: selectedType,
+        subject: subject, text, tags,
+        likes: [], bookmarks: [], shares: 0,
+        timestamp: Date.now(), community: subject, resource: null
+      };
+
+      addPost(post);
+      awardPoints(currentUser.id, 10, 'post');
+      collapseComposer();
+      showToast('Post published! +10 points 🎉', 'success');
+      renderFeed();
+    }
+
+    function buildTrending() {
+      const trends = ['#Quadratic', '#Newton', '#PeriodicTable', '#JEE2025', '#CBSEExam', '#StudyTips', '#Maths', '#Physics'];
+      const el = document.getElementById('trending-list');
+      if (!el) return;
+      el.innerHTML = trends.slice(0,6).map((t,i) => `
+        <div class="trending-item" onclick="searchTrend('${t}')">
+          <div class="trending-tag">${t}</div>
+          <div class="trending-count">${Math.floor(Math.random()*200)+20} posts</div>
+        </div>`).join('');
+    }
+
+    function searchTrend(tag) {
+      document.getElementById('search-input').value = tag;
+      filterPosts();
+    }
+
+    function buildSuggested() {
+      const all = getAllUsers().filter(u => u.id !== currentUser.id && u.role !== 'admin' && !currentUser.following.includes(u.id)).slice(0,4);
+      const el = document.getElementById('suggested-list');
+      if (!el) return;
+      el.innerHTML = all.map(u => `
+        <div class="user-suggest-card">
+          <div class="avatar avatar-sm" style="background:${u.bg || 'var(--grad-primary)'}">${u.avatar}</div>
+          <div class="user-suggest-info">
+            <div class="user-suggest-name">${u.name}</div>
+            <div class="user-suggest-sub">${u.role} • ${u.subject}</div>
+          </div>
+          <button class="btn btn-outline btn-sm" id="follow-btn-${u.id}" onclick="followUser('${u.id}')">Follow</button>
+        </div>`).join('');
+    }
+
+    function followUser(targetId) {
+      const following = toggleFollow(targetId, currentUser.id);
+      const btn = document.getElementById(`follow-btn-${targetId}`);
+      if (btn) { btn.textContent = following ? 'Following' : 'Follow'; btn.className = `btn ${following?'btn-secondary':'btn-outline'} btn-sm`; }
+      showToast(following ? 'Following!' : 'Unfollowed', 'success');
+      currentUser = getCurrentUser();
+    }
+
+    function reportPost(postId) {
+      reportingPostId = postId;
+      openModal('report-modal');
+    }
+
+    function submitReport() {
+      const reason = document.getElementById('report-reason').value;
+      if (reportingPostId) reportContent(currentUser.id, reportingPostId, 'post', reason);
+      closeModal('report-modal');
+      showToast('Report submitted. Thank you!', 'success');
+      reportingPostId = null;
+    }
+  </script>
+</body>
+</html>

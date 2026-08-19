@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Communities — EduConnect</title>
+  <meta name="description" content="Join subject-based communities on EduConnect. Connect with students and teachers in Mathematics, Physics, Chemistry, and more.">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+  <style>
+    .communities-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: var(--sp-4);
+    }
+
+    .community-detail {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .community-header-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-2xl);
+      overflow: hidden;
+      margin-bottom: var(--sp-5);
+      backdrop-filter: blur(20px);
+    }
+
+    .comm-banner {
+      height: 140px;
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      padding: var(--sp-4);
+    }
+
+    .comm-big-icon {
+      font-size: 2.5rem;
+      width: 64px;
+      height: 64px;
+      background: var(--bg-elevated);
+      border: 2px solid var(--border);
+      border-radius: var(--r-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      bottom: -28px;
+      left: var(--sp-6);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .comm-info-row {
+      padding: var(--sp-5) var(--sp-6);
+      padding-top: 40px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--sp-4);
+    }
+
+    .comm-info-row h2 { font-size: 1.4rem; }
+
+    .comm-stats { display: flex; gap: var(--sp-5); margin-top: var(--sp-3); font-size: 0.82rem; color: var(--text-muted); }
+    .comm-stats span { display: flex; align-items: center; gap: 4px; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <!-- Communities List View -->
+      <div id="communities-list-view">
+        <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <h1>Subject Communities</h1>
+            <p>Join communities, ask questions, share knowledge</p>
+          </div>
+          <div class="search-bar" style="width:220px;">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" placeholder="Search communities…" id="comm-search" oninput="filterComms()">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:var(--sp-2);margin-bottom:var(--sp-5);flex-wrap:wrap;" id="comm-filters">
+          <button class="chip active" onclick="filterByJoined('all',this)">All Communities</button>
+          <button class="chip" onclick="filterByJoined('joined',this)">Joined</button>
+        </div>
+
+        <div class="communities-grid" id="communities-grid"></div>
+      </div>
+
+      <!-- Community Detail View -->
+      <div id="community-detail-view" class="hidden">
+        <div class="community-detail">
+          <button class="btn btn-secondary btn-sm" style="margin-bottom:var(--sp-4);" onclick="showListView()"><i class="ph ph-arrow-left"></i> All Communities</button>
+
+          <div class="community-header-card">
+            <div class="comm-banner" id="comm-banner">
+              <div class="comm-big-icon" id="comm-big-icon"></div>
+            </div>
+            <div class="comm-info-row">
+              <div>
+                <h2 id="comm-detail-name">Community</h2>
+                <p id="comm-detail-desc" style="font-size:0.875rem;color:var(--text-muted);margin-top:var(--sp-1);"></p>
+                <div class="comm-stats" id="comm-detail-stats"></div>
+              </div>
+              <button class="btn btn-primary" id="join-leave-btn" onclick="toggleJoin()"></button>
+            </div>
+          </div>
+
+          <!-- Pinned Post -->
+          <div id="pinned-post-section" class="hidden" style="margin-bottom:var(--sp-5);">
+            <div style="display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-3);">
+              <i class="ph ph-push-pin" style="color:var(--warning);"></i>
+              <span style="font-size:0.82rem;font-weight:600;color:var(--text-muted);">PINNED POST</span>
+            </div>
+            <div id="pinned-post-content"></div>
+          </div>
+
+          <!-- Community Posts -->
+          <div class="section-title">Recent Discussions</div>
+          <div id="comm-posts" style="display:flex;flex-direction:column;gap:var(--sp-4);"></div>
+
+          <div id="comm-empty" class="empty-state hidden">
+            <i class="ph ph-chat-circle"></i>
+            <h4>No posts yet</h4>
+            <p>Be the first to start a discussion in this community!</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let currentUser, communities, joinFilter = 'all';
+    let activeCommunityId = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      currentUser = requireAuth();
+      if (!currentUser) return;
+      buildSidebar('community');
+      communities = getCommunities();
+      renderGrid();
+
+      // Check URL for community ID
+      const commId = getParam('id');
+      if (commId) showDetailView(commId);
+    });
+
+    function renderGrid() {
+      let comms = communities;
+      const search = document.getElementById('comm-search')?.value.toLowerCase() || '';
+      if (search) comms = comms.filter(c => c.name.toLowerCase().includes(search) || c.desc.toLowerCase().includes(search));
+      if (joinFilter === 'joined') comms = comms.filter(c => c.members.includes(currentUser.id));
+
+      const grid = document.getElementById('communities-grid');
+      if (!comms.length) { grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><i class="ph ph-users-three"></i><h4>No communities found</h4></div>`; return; }
+
+      grid.innerHTML = comms.map(c => {
+        const joined = c.members.includes(currentUser.id);
+        return `
+          <div class="community-card animate-fade-in-up" onclick="showDetailView('${c.id}')">
+            <div class="community-banner" style="background:linear-gradient(135deg, ${c.color}33, ${c.color}11);">
+              <div class="community-icon">${c.icon}</div>
+            </div>
+            <div class="community-body">
+              <div class="community-name">${c.name}</div>
+              <div class="community-desc">${c.desc}</div>
+              <div class="community-stats">
+                <span><i class="ph ph-users"></i> ${c.members.length} members</span>
+                <span><i class="ph ph-article"></i> ${c.posts.length} posts</span>
+              </div>
+              <button class="btn ${joined ? 'btn-secondary':'btn-primary'} btn-sm w-full" onclick="event.stopPropagation();toggleJoinComm('${c.id}',this)">
+                ${joined ? '✓ Joined' : '+ Join'}
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function filterComms() { renderGrid(); }
+
+    function filterByJoined(filter, btn) {
+      joinFilter = filter;
+      document.querySelectorAll('#comm-filters .chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      renderGrid();
+    }
+
+    function toggleJoinComm(commId, btn) {
+      const comm = communities.find(c => c.id === commId);
+      const joined = comm.members.includes(currentUser.id);
+      if (joined) { leaveCommunity(commId, currentUser.id); showToast(`Left ${comm.name}`, 'info'); }
+      else { joinCommunity(commId, currentUser.id); showToast(`Joined ${comm.name}! 🎉`, 'success'); }
+      communities = getCommunities();
+      renderGrid();
+    }
+
+    function showDetailView(commId) {
+      activeCommunityId = commId;
+      const comm = getCommunity(commId);
+      if (!comm) return;
+
+      document.getElementById('communities-list-view').classList.add('hidden');
+      const dv = document.getElementById('community-detail-view');
+      dv.classList.remove('hidden');
+
+      // Banner
+      const banner = document.getElementById('comm-banner');
+      banner.style.background = `linear-gradient(135deg, ${comm.color}40, ${comm.color}10)`;
+      document.getElementById('comm-big-icon').textContent = comm.icon;
+
+      // Info
+      document.getElementById('comm-detail-name').textContent = comm.name;
+      document.getElementById('comm-detail-desc').textContent = comm.desc;
+      document.getElementById('comm-detail-stats').innerHTML = `
+        <span><i class="ph ph-users"></i> ${comm.members.length} members</span>
+        <span><i class="ph ph-article"></i> ${comm.posts.length} posts</span>`;
+
+      // Join/Leave button
+      const joined = comm.members.includes(currentUser.id);
+      const jlBtn = document.getElementById('join-leave-btn');
+      jlBtn.className = `btn ${joined ? 'btn-secondary':'btn-primary'}`;
+      jlBtn.innerHTML = joined ? '✓ Joined' : '+ Join Community';
+
+      // Pinned post
+      if (comm.pinned) {
+        const pinnedPost = getPost(comm.pinned);
+        if (pinnedPost) {
+          document.getElementById('pinned-post-section').classList.remove('hidden');
+          document.getElementById('pinned-post-content').innerHTML = buildPostCard(pinnedPost, currentUser);
+        }
+      }
+
+      // Posts
+      const allPosts = getPosts().filter(p => comm.posts.includes(p.id) || p.community === comm.name);
+      const postsEl = document.getElementById('comm-posts');
+      const emptyEl = document.getElementById('comm-empty');
+      const displayPosts = allPosts.filter(p => p.id !== comm.pinned);
+      if (!displayPosts.length) {
+        postsEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+      } else {
+        emptyEl.classList.add('hidden');
+        postsEl.innerHTML = displayPosts.map(p => buildPostCard(p, currentUser)).join('');
+      }
+    }
+
+    function showListView() {
+      document.getElementById('communities-list-view').classList.remove('hidden');
+      document.getElementById('community-detail-view').classList.add('hidden');
+      communities = getCommunities();
+      renderGrid();
+    }
+
+    function toggleJoin() {
+      if (!activeCommunityId) return;
+      const comm = getCommunity(activeCommunityId);
+      const joined = comm.members.includes(currentUser.id);
+      if (joined) leaveCommunity(activeCommunityId, currentUser.id);
+      else joinCommunity(activeCommunityId, currentUser.id);
+      showDetailView(activeCommunityId);
+      showToast(joined ? `Left ${comm.name}` : `Joined ${comm.name}! 🎉`, joined ? 'info' : 'success');
+    }
+  </script>
+</body>
+</html>
